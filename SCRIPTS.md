@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 117 |
-| 在研究日志里出现过 | 75 |
-| 有对应测试 | 46 |
+| 脚本总数 | 118 |
+| 在研究日志里出现过 | 76 |
+| 有对应测试 | 47 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -170,6 +170,7 @@
 | `run_voltarget_blend.py` | run | ✓ | ✓ | Is the 12% volatility target still worth switching on, on the new baseline? |
 | `run_weighting.py` | run | — | — | Does the construction rule add anything after the basket is chosen? |
 | `run_weighting_robustness.py` | run | — | — | Robustness of inverse-vol sizing for the 6/2 low-vol book. |
+| `run_window_extent.py` | run | ✓ | ✓ | Does "longer is better" ever stop? If it never does, that is a warning, not a finding. |
 | `run_window_gate.py` | run | ✓ | ✓ | Does trend_window=250 survive the gates a re-release has to pass? |
 | `run_window_scan.py` | run | ✓ | — | How much of a 2-3 year result is window luck? |
 | `run_year_table.py` | run | ✓ | ✓ | Calendar-year breakdown of the published out-of-sample record. |
