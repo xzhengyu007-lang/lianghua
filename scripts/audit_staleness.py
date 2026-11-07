@@ -38,6 +38,12 @@ TRANSIENT = {"dashboard", "verification", "publish_check", "runs"}
 # The reports the decision actually rests on: DECISION.md and the README
 # authority table quote these, so they must be derived from today's engine.
 CRITICAL = (
+    # Every report DECISION.md reads. tests/test_audit_staleness.py asserts this
+    # set covers the generator's dependencies, so the page cannot silently rest
+    # on an artifact nobody is watching.
+    "random_control",
+    "quarter_consistency",
+    "execution_timing",
     "year_table_blend",
     "voltarget_blend",
     "phase_recheck",

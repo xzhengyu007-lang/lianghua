@@ -53,6 +53,14 @@ def test_memo_quotes_the_interval_not_only_the_point():
     assert "最差相位" in text
 
 
+def test_memo_opens_with_the_three_things_that_matter():
+    """If a reader stops after three lines, they must still be correctly informed."""
+    text = MEMO.read_text(encoding="utf-8")
+    assert "如果你只记得三件事" in text
+    assert "相位中位 Sharpe" in text
+    assert "「有效」不等于「已被证明」" in text
+
+
 def test_memo_tabulates_every_route_to_more_power():
     """The three falsified routes must stay visible next to the two live ones."""
     text = MEMO.read_text(encoding="utf-8")

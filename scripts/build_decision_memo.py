@@ -163,6 +163,23 @@ def render(payload: dict) -> str:
     lines.append("> `tests/test_decision_memo.py` 会比对本文与重新生成的结果，改数字必须改报告。")
     lines.append("")
 
+    lines.append("## 如果你只记得三件事")
+    lines.append("")
+    lines.append("1. **它是什么**：大盘低波 + 月度轮动。中位持有一只股票 %d 个交易日，不是「买入并持有低波龙头」"
+                 "（§23.74/§23.91）。"
+                 % (round(payload["turnover"]["median_holding_days"]) if "turnover" in payload else 0))
+    full = payload.get("full_period", {}).get("deployable")
+    median_sharpe = payload.get("phase_spread", {}).get("median_sharpe")
+    if full and median_sharpe:
+        lines.append("2. **它值多少**：全期 %+.2f%% / Sharpe %.3f（部署口径）。但同一窗口的相位中位 Sharpe 只有"
+                     " **%.3f**——把 %.3f 当成期望值是错的（§23.82）。"
+                     % (full["return"] * 100, full["sharpe"], median_sharpe, full["sharpe"]))
+    if "evidence" in payload and "value_attribution" in payload:
+        lines.append("3. **别把它当成已证明**：7.14 年的记录对真 Sharpe 0.90 只有 **%.0f%%** 检出力；"
+                     "打分本身确实有效（随机选股中位只有 %.3f），但「有效」不等于「已被证明」。"
+                     % ((payload["evidence"]["power_at_7_3y"] or 0) * 100,
+                        payload["value_attribution"]["random_median"]))
+    lines.append("")
     lines.append("## 1. 现在该部署什么")
     lines.append("")
     lines.append("| 项 | 取值 |")

@@ -45,6 +45,9 @@ PLAN = [
     ("power_recheck", "run_power_recheck.py", []),
     ("cadence_blend", "run_cadence_blend.py", []),
     ("cross_pool_random", "run_cross_pool_random.py", []),
+    ("execution_timing", "run_execution_timing.py", []),
+    ("quarter_consistency", "run_quarter_consistency.py", []),
+    ("random_control", "run_random_control.py", []),
 ]
 
 POST = [
