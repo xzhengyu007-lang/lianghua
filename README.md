@@ -268,7 +268,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -319,7 +319,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **313 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **317 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
@@ -829,6 +829,12 @@ PIT 池样本外为 +147.2% / Sharpe 1.27。但这些窗口彼此重叠，且完
 **+27.72% / Sharpe 0.780 / 最大回撤 −13.68%**，代价是约 10% 更多换手。这个数字可以重复——
 只要规则不变，它不取决于你从哪天开始数。三次修订到此收口：+43.68%（相位 0，靠运气）→
 +24.97%（相位中位，靠“恰好挑中位那一天”）→ **+27.72%（混合，可重复）**。
+
+**部署配置到此定型**（`reports/voltarget_blend/`，§23.85）：**混合 + 12% 目标波动**。
+2024–2026 为 **+26.29% / Sharpe 0.800 / 最大回撤 −12.10%**；相对 18% 只少 1.4pp 收益，换来
+1.6pp 更浅回撤与更高 Sharpe。**10% 被 12% 严格支配**（三段回撤几乎相同、各少赚 6.3/2.8/3.1pp），
+15% 与 18% 在近段几乎重合（自然波动已接近 12.3%），所以真正的选择只有 12% vs 18%。
+12% 在三段里的回撤都比 18% 浅，而 ΔSharpe 九格全部含 0——它是**风险预算的选择**，不是 Sharpe 改进。
 
 **调仓日历**：把“每 20 个交易日”换成“月末调仓”后，8/2 从 +79.17% 降到
 +39.38%（MDD -16.66% → -23.64%），6/2 从 +126.47% 降到 +61.86%；逐窗口配对
