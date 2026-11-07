@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 107 |
-| 在研究日志里出现过 | 65 |
-| 有对应测试 | 35 |
+| 脚本总数 | 108 |
+| 在研究日志里出现过 | 66 |
+| 有对应测试 | 36 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -93,6 +93,7 @@
 | `run_capacity_curve.py` | run | ✓ | ✓ | Capacity curve: how much capital before the book stops being buildable? |
 | `run_concentration.py` | run | — | — | Concentration study: how much of the headline comes from a few names? |
 | `run_cost_decomposition.py` | run | ✓ | — | What does each cost scenario actually charge per trade? |
+| `run_cost_floor.py` | run | ✓ | ✓ | A structural floor on per-trade cost that no parameter choice can undercut. |
 | `run_cost_panel.py` | run | ✓ | — | Cost sensitivity across the three windows: does the edge survive 30bp/side? |
 | `run_cost_target_interaction.py` | run | ✓ | ✓ | Does the 12% risk budget survive a harsh cost model? |
 | `run_cross_pool.py` | run | ✓ | ✓ | Would a second market actually buy us independent evidence? |
