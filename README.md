@@ -268,7 +268,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -319,7 +319,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **292 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **295 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
@@ -788,6 +788,13 @@ PIT 池样本外为 +147.2% / Sharpe 1.27。但这些窗口彼此重叠，且完
 “剔除规模后只剩 0.0036”是同一件事：低波分主要在识别“会死 / 很小”的股票。说“低波因子有效”
 时应同时给出全池与在册两个数，组合层的增量研究应以在册口径的 +0.031 为基准。
 产物见 `reports/breadth_ic/`，详见 §23.76。
+
+**这套书的钱到底从哪来**（`reports/pnl_cohorts/`，§23.79）：用三个归档窗口的成交拆已实现
+盈亏，2019–2021 有 **63%**、2022–2023 有 **61%** 来自“今天已退市”的那批股票（前者分布型，
+41 只里 22 只赚；后者脆弱，3 只占 87%）；2024–2026 只剩 1 只且亏损，**105.6% 的盈亏来自
+仍在册群**。全部卖出标签都是 `rebalance`，退市强制清算从未触发——书是在这些票活着的时候
+买入、死之前卖出的，不是“躲开了”。这意味着长期收益里有一部分来自一个**随池子收缩而消失**
+的来源；向前看的基准应取 2024–2026 的 +43.68% / 1.08，而不是把七年 CAGR 线性外推。
 
 **调仓日历**：把“每 20 个交易日”换成“月末调仓”后，8/2 从 +79.17% 降到
 +39.38%（MDD -16.66% → -23.64%），6/2 从 +126.47% 降到 +61.86%；逐窗口配对
