@@ -107,6 +107,7 @@
 - 23.100 成本的微观结构下界：5bp 滑点在低价窗口里根本不可能
 - 23.101 执行时点：晚一天只掉 0.04 个 Sharpe，所以「拿不到开盘价」不是致命假设
 - 23.102 随机选股对照：把打分换成随机，其余全不变，Sharpe 从 1.14 掉到 0.12
+- 23.103 把「值在哪」写进决策页，并把测试陷阱写进手册
 <!-- /TOC -->
 
 ## 1. 数据源与范围
@@ -7321,6 +7322,44 @@ exit=1
 - `scripts/run_random_control.py`、`reports/random_control/`（`draws.csv`、`summary.json`、`report.md`）
 - `tests/test_random_control.py`
 - `FINDINGS.md` 第 74 条
+
+### 23.103 把「值在哪」写进决策页，并把测试陷阱写进手册
+
+这一节没有新实验，只做两件收口的事。
+
+#### 一、决策页第 1 节增加了「这台机器值在哪」
+
+§23.102 发现把打分换成随机、其余全不变，Sharpe 从 1.143 掉到 0.116——打分确实在干活。
+但 §23.77 说池内 IC 只有 +0.031，§23.40 说相对低波 1/3 篮子的增量超额只有 +13.4%/年（t=1.77）。
+三条摆在一起，读者很容易以为它们互相矛盾。
+
+`DECISION.md` 第 1 节现在把这层关系写清楚：**价值主要在「待在低波 + 均线上方这个桶里并持续
+持有它」，不在「在桶里挑出最好的 8 只」**。这句话不是手写的——备忘是生成物，这段从
+`reports/random_control/summary.json` 与 `reports/factor_cohorts/summary.json` 取数，并由
+`tests/test_decision_memo.py` 断言那几个引用必须在场（否则下次重生成时会悄悄丢掉）。
+
+顺带修了两处显示瑕疵：一处 `%%` 未转义（正文出现 `+13.4%%/年`），一处直引号嵌套导致的
+语法错误。都是"改动后没有回读产物"造成的——生成物必须回读。
+
+#### 二、手册增加了「写测试时的三个约定」
+
+同一个坑踩了两次才配得上写进手册：
+
+1. **用 importlib 加载含 `@dataclass` 的脚本时，先注册到 `sys.modules`**，否则
+   `AttributeError: 'NoneType' object has no attribute '__dict__'`（§23.78 与 §23.102 各踩一次）。
+2. **构造合成面板要给全 OHLCV**，只给 close/volume 会在 `panel_to_frame` 抛
+   `KeyError: open missing`。
+3. **依赖产物的测试用 `pytest.skip` 而不是失败**——报告目录被 gitignore，干净检出时不存在。
+
+这三条都属于"知道就一秒、不知道就半小时"的类型，而且都不会被任何一次正常测试暴露。
+
+#### 定位
+
+- `DECISION.md`（第 1 节新增段落）、`scripts/build_decision_memo.py`（`collect()` 增读两处产物）
+- `RUNBOOK.md` §6「写测试时的三个约定」
+- `tests/test_decision_memo.py`（新增一项：价值归因段落必须在场）
+- `FINDINGS.md` 第 75 条
+
 
 
 

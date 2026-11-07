@@ -115,6 +115,24 @@ def collect() -> dict:
             "p10_60": float(breadth.loc[breadth["size"] == 60, "sharpe_p10"].iloc[0]),
         }
 
+    random_control = _json(REPORTS / "random_control" / "summary.json")
+    if random_control:
+        payload["value_attribution"] = {
+            "real_sharpe": float(random_control["real"]["sharpe"]),
+            "random_median": float(random_control["random"]["sharpe_median"]),
+            "random_p95": float(random_control["random"]["sharpe_p95"]),
+            "real_percentile": float(random_control["real_percentile_among_random"]),
+        }
+
+    cohorts = _json(REPORTS / "factor_cohorts" / "summary.json")
+    if cohorts:
+        row = next(
+            (r for r in cohorts["rows"] if r["factor"] == "low_vol" and r["horizon"] == 20 and r["cohort"] == "listed"),
+            None,
+        )
+        if row:
+            payload["value_attribution_in_pool_ic"] = float(row["mean_ic"])
+
     check = _json(REPORTS / "publish_check" / "summary.json")
     if check:
         payload["publish_check"] = {"all_ok": bool(check["all_ok"]),
@@ -139,6 +157,17 @@ def render(payload: dict) -> str:
     lines.append("| 调仓 | 每 %d 个交易日，按自然年重置锚点 |" % cfg["rebalance_days"])
     lines.append("| 风险 | 目标年化波动 %.0f%% |" % (cfg["target_vol"] * 100))
     lines.append("")
+    if "value_attribution" in payload:
+        v = payload["value_attribution"]
+        lines.append("**这台机器值在哪（这比「值多少」更重要）**：把低波分换成随机分、其余约束全不变时，")
+        lines.append("Sharpe 从 %.3f 掉到中位 %.3f（随机 p95 只有 %.3f，发布策略在第 %.0f 百分位，§23.102）。"
+                     % (v["real_sharpe"], v["random_median"], v["random_p95"], v["real_percentile"] * 100))
+        if "value_attribution_in_pool_ic" in payload:
+            lines.append("所以打分确实在干活。但低波分在**仍在册**名字上的池内 IC 只有 %+.3f（§23.77），而相对"
+                         % payload["value_attribution_in_pool_ic"])
+            lines.append("低波 1/3 篮子的增量超额只有 +13.4%/年、t=1.77（§23.40）。两者并不矛盾：**它的价值主要在"
+                         "「待在低波 + 均线上方这个桶里并持续持有」，不在「在桶里挑出最好的 8 只」**。")
+        lines.append("")
     lines.append("选它的唯一理由是**它是唯一不取决于「你从哪天开始数」的配置**：单相位的 20 个等价日历")
     lines.append("在 2024–2026 上收益跨度 40.9pp，而混合把这些日历等权拿住（§23.82/§23.83）。")
     lines.append("")

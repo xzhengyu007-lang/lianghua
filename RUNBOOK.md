@@ -78,7 +78,19 @@ python -m venv .venv
 | 结论和 README 不一致 | 先跑 `audit_staleness.py`，再看引用报告的生成时间 |
 | 不知道该信哪个数字 | `DECISION.md`（唯一权威）与 `FINDINGS.md`（置信度） |
 
-## 6. 相关文档
+## 6. 写测试时的三个约定
+
+这三条都是踩过的，不是理论：
+
+1. **用 importlib 加载含 `@dataclass` 的脚本时，先注册到 `sys.modules`。**
+   否则 `@dataclass` 解析注解会抛 `AttributeError: 'NoneType' object has no attribute '__dict__'`
+   （在 §23.78 与 §23.102 各踩一次）。
+2. **构造合成面板要给全 OHLCV。** 只给 `close` 与 `volume` 会在 `panel_to_frame` 里
+   `KeyError: open missing`。最小可用列：`open / high / low / close / volume`。
+3. **依赖产物的测试用 `pytest.skip` 而不是失败。** 报告目录被 gitignore，干净检出时不存在，
+   应当跳过而不是红。
+
+## 7. 相关文档
 
 - `DECISION.md` —— 要不要上钱、期望多少、缺什么证据（生成物，勿手改）
 - `FINDINGS.md` —— 69 条结论的置信度与依据

@@ -53,6 +53,14 @@ def test_memo_quotes_the_interval_not_only_the_point():
     assert "最差相位" in text
 
 
+def test_memo_says_where_the_value_comes_from():
+    """23.102's positive result must sit next to 23.40/23.77's caveat."""
+    text = MEMO.read_text(encoding="utf-8")
+    assert "这台机器值在哪" in text
+    assert "§23.102" in text
+    assert "§23.40" in text
+
+
 def test_memo_lists_explicit_falsification_conditions():
     text = MEMO.read_text(encoding="utf-8")
     assert "什么会推翻" in text
