@@ -6,7 +6,7 @@
 |---|---:|
 | 脚本总数 | 109 |
 | 在研究日志里出现过 | 67 |
-| 有对应测试 | 37 |
+| 有对应测试 | 38 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -133,7 +133,7 @@
 | `run_power_recheck.py` | run | ✓ | ✓ | Detection power for the Sharpe we can actually claim. |
 | `run_power_study.py` | run | ✓ | ✓ | How much out-of-sample data does a Sharpe of 1.0 need to be provable? |
 | `run_publish_check.py` | run | ✓ | ✓ | Self-check for the configuration we would actually deploy. |
-| `run_random_control.py` | run | ✓ | — | Random-selection control for the low-volatility core strategy. |
+| `run_random_control.py` | run | ✓ | ✓ | Does the ranking add anything over random selection with the same constraints? |
 | `run_random_control_pit.py` | run | — | — | Random-selection control on the point-in-time pool. |
 | `run_rebalance_anchor.py` | run | ✓ | — | Rebalance-anchor sensitivity: how much of the headline is calendar luck? |
 | `run_rebalance_calendar.py` | run | ✓ | — | Rebalance calendar: fixed 20-bar cadence vs calendar month-end. |

@@ -1,18 +1,27 @@
-"""Random-selection control for the low-volatility core strategy.
+"""Does the ranking add anything over random selection with the same constraints?
 
-The baseline reports +145.9% on 122 current-listed large caps. That number is
-not evidence that the low-volatility *ranking* adds value: a random basket of
-the same size, with the same rebalance dates and sector cap, benefits from the
-same panel drift. This script measures that null distribution.
+Every downstream conclusion rests on "the low-vol score picks better names". 23.77
+already showed the score's in-pool IC is only +0.031 once the delisting channel is
+removed, so the question is fair: if you drew eight names at random from the same
+eligible set, honouring the same sector cap, rebalance cadence and volatility
+target, how much of the result would survive?
 
-Each draw replaces the strategy scores with seeded uniform noise and reuses the
-same selection engine, portfolio overlays, execution model and costs.
+The control keeps everything the strategy has except the ranking: the random
+score replaces the low-vol score, so eligibility (traded, above the trend line),
+the sector cap, the sizing and the costs are byte-identical.
+
+Usage::
+
+    python scripts/run_random_control.py --draws 100
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
+import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -22,108 +31,136 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from quant_system.backtest import Backtester  # noqa: E402
+from quant_system.cli import _rebuilt_panel, _research_panel  # noqa: E402
 from quant_system.config import BROAD_UNIVERSE, BacktestConfig, RiskConfig  # noqa: E402
-from quant_system.data import (  # noqa: E402
-    availability,
-    load_panel,
-    load_symbol,
-    trim_panel,
-    usable_window,
-)
+from quant_system.data import align_panel, pit_universe, price_frame  # noqa: E402
+from quant_system.indicators import sma  # noqa: E402
 from quant_system.portfolio import build_portfolio  # noqa: E402
-from quant_system.strategies import _select_weights, build_strategy  # noqa: E402
+from quant_system.strategies import LowVolCoreStrategy, _traded  # noqa: E402
 
-PARAMS = dict(top_n=8, vol_window=60, trend_window=120, max_per_sector=2, rebalance_days=20)
-DRAWS = 100
-SEED = 20261106
-
-
-def run(panel, benchmark, raw):
-    weights = build_portfolio(
-        raw, panel, benchmark=benchmark, risk=RiskConfig(), use_regime=False
-    )
-    return Backtester(BacktestConfig(initial_cash=1_000_000)).run(
-        panel, weights, benchmark=benchmark
-    )
+TARGET_VOL = 0.12
+BASE = dict(
+    top_n=8,
+    vol_window=60,
+    trend_window=120,
+    max_per_sector=2,
+    rebalance_days=20,
+    rebalance_reset="year",
+)
 
 
-def main() -> int:
-    cache = ROOT / "data" / "cache"
-    panel = trim_panel(load_panel(list(BROAD_UNIVERSE), cache), min_coverage=0.95)
-    start, end = usable_window(panel, min_active_ratio=0.95)
-    panel = {symbol: frame.loc[start:end] for symbol, frame in panel.items()}
-    benchmark = load_symbol("sh000300", cache, adjust="")["close"].loc[start:end]
-    print(f"window {start.date()}..{end.date()} symbols={len(panel)}", flush=True)
+@dataclass
+class RandomSelection(LowVolCoreStrategy):
+    """Identical eligibility and constraints, random ranking."""
 
-    base_raw = build_strategy("low_vol_core", **PARAMS).generate(panel)
-    base = run(panel, benchmark, base_raw)
-    print(
-        f"baseline total={base.metrics.total_return:.4f} sharpe={base.metrics.sharpe:.4f}",
-        flush=True,
-    )
+    seed: int = 0
 
-    avail = availability(panel)
-    rng = np.random.default_rng(SEED)
-    rows = []
-    for draw in range(DRAWS):
+    def score(self, panel):
+        close = price_frame(panel, "close")
+        traded = _traded(panel, close)
+        trend_ok = traded & (close > sma(close, self.trend_window))
+        rng = np.random.default_rng(self.seed)
         scores = pd.DataFrame(
-            rng.random(base_raw.shape),
-            index=base_raw.index,
-            columns=base_raw.columns,
+            rng.random(close.shape), index=close.index, columns=close.columns
         )
-        raw = _select_weights(
-            scores,
-            PARAMS["top_n"],
-            available=avail,
-            max_per_sector=PARAMS["max_per_sector"],
-            rebalance_days=PARAMS["rebalance_days"],
-        )
-        result = run(panel, benchmark, raw)
-        rows.append(
-            {
-                "draw": draw,
-                "total_return": result.metrics.total_return,
-                "sharpe": result.metrics.sharpe,
-                "max_drawdown": result.metrics.max_drawdown,
-            }
-        )
-        print(
-            f"draw {draw:02d}: total={result.metrics.total_return:.3%} "
-            f"sharpe={result.metrics.sharpe:.3f}",
-            flush=True,
-        )
+        return scores, trend_ok
+
+
+def run(strategy, aligned):
+    weights = build_portfolio(
+        strategy.generate(aligned),
+        aligned,
+        risk=RiskConfig(target_annual_vol=TARGET_VOL),
+        use_regime=False,
+        use_vol_target=True,
+    )
+    metrics = Backtester(BacktestConfig()).run(aligned, weights).metrics
+    return {
+        "sharpe": float(metrics.sharpe),
+        "cagr": float(metrics.cagr),
+        "total_return": float(metrics.total_return),
+        "max_drawdown": float(metrics.max_drawdown),
+        "turnover": float(metrics.turnover),
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cache-dir", default=str(ROOT / "data" / "cache"))
+    parser.add_argument("--output", default=str(ROOT / "reports" / "random_control"))
+    parser.add_argument("--draws", type=int, default=100)
+    parser.add_argument("--seed", type=int, default=20261108)
+    args = parser.parse_args(argv)
+
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+
+    print("loading rebuilt PIT panel...", flush=True)
+    panel = _rebuilt_panel(list(pit_universe()), Path(args.cache_dir), "rebuilt")
+    panel = _research_panel(panel, anchor_symbols=list(BROAD_UNIVERSE))
+    aligned, _dates = align_panel(panel)
+
+    print("running the published strategy (single phase, %.0f%% target)..." % (TARGET_VOL * 100), flush=True)
+    real = run(LowVolCoreStrategy(**BASE), aligned)
+    print("  real: %+.2f%%  sharpe %.3f" % (real["total_return"] * 100, real["sharpe"]), flush=True)
+
+    rows = []
+    started = time.time()
+    for draw in range(args.draws):
+        info = run(RandomSelection(seed=args.seed + draw, **BASE), aligned)
+        rows.append({"draw": draw, **info})
+        if draw % 10 == 0:
+            print("  draw=%d sharpe=%.3f (%.0fs)" % (draw, info["sharpe"], time.time() - started), flush=True)
 
     frame = pd.DataFrame(rows)
-    out = ROOT / "reports" / "random_control"
-    out.mkdir(parents=True, exist_ok=True)
     frame.to_csv(out / "draws.csv", index=False, encoding="utf-8-sig")
-    returns = frame["total_return"]
+
+    sharpes = frame["sharpe"]
+    percentile = float((sharpes < real["sharpe"]).mean())
     summary = {
-        "window": [str(start.date()), str(end.date())],
-        "symbols": len(panel),
-        "params": PARAMS,
-        "draws": DRAWS,
-        "seed": SEED,
-        "baseline": {
-            "total_return": base.metrics.total_return,
-            "sharpe": base.metrics.sharpe,
-            "max_drawdown": base.metrics.max_drawdown,
-        },
+        "target_vol": TARGET_VOL,
+        "draws": args.draws,
+        "seed": args.seed,
+        "real": real,
         "random": {
-            "mean_return": float(returns.mean()),
-            "median_return": float(returns.median()),
-            "p05_return": float(returns.quantile(0.05)),
-            "p95_return": float(returns.quantile(0.95)),
-            "max_return": float(returns.max()),
-            "share_below_baseline": float((returns < base.metrics.total_return).mean()),
-            "one_sided_p": float((returns >= base.metrics.total_return).mean()),
+            "sharpe_median": float(sharpes.median()),
+            "sharpe_p5": float(sharpes.quantile(0.05)),
+            "sharpe_p95": float(sharpes.quantile(0.95)),
+            "sharpe_min": float(sharpes.min()),
+            "sharpe_max": float(sharpes.max()),
+            "cagr_median": float(frame["cagr"].median()),
+            "max_drawdown_median": float(frame["max_drawdown"].median()),
+            "turnover_median": float(frame["turnover"].median()),
         },
+        "real_percentile_among_random": percentile,
     }
     (out / "summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(summary, ensure_ascii=False, indent=2, default=float), encoding="utf-8"
     )
-    print(json.dumps(summary["random"], ensure_ascii=False, indent=2))
-    print(f"report: {out}")
+
+    lines = ["# 随机选股对照（同池、同约束、同风控）", ""]
+    lines.append("把低波分换成随机分，其余（可交易、趋势过滤、每行业 2 只、8 只、20 日、12% 目标、成本）全部不变。")
+    lines.append("%d 次抽样，单相位（offset 0），全期。" % args.draws)
+    lines.append("")
+    lines.append("| 口径 | 累计收益 | CAGR | Sharpe | 最大回撤 | 换手 |")
+    lines.append("|---|---:|---:|---:|---:|---:|")
+    lines.append("| **低波分（发布策略）** | %+.2f%% | %+.2f%% | **%.3f** | %.2f%% | %.1f |"
+                 % (real["total_return"] * 100, real["cagr"] * 100, real["sharpe"],
+                    real["max_drawdown"] * 100, real["turnover"]))
+    rnd = summary["random"]
+    lines.append("| 随机选中位 | — | %+.2f%% | %.3f | %.2f%% | %.1f |"
+                 % (rnd["cagr_median"] * 100, rnd["sharpe_median"],
+                    rnd["max_drawdown_median"] * 100, rnd["turnover_median"]))
+    lines.append("| 随机 p5 / p95 | — | — | %.3f / %.3f | — | — |"
+                 % (rnd["sharpe_p5"], rnd["sharpe_p95"]))
+    lines.append("")
+    lines.append("发布策略在 %d 次随机抽样中排在 **%.0f 分位**。" % (args.draws, percentile * 100))
+    lines.append("")
+    (out / "report.md").write_text("\n".join(lines), encoding="utf-8")
+
+    print("\nreal sharpe %.3f | random median %.3f | p5 %.3f p95 %.3f | real percentile %.0f%%"
+          % (real["sharpe"], rnd["sharpe_median"], rnd["sharpe_p5"], rnd["sharpe_p95"], percentile * 100))
+    print("report: %s" % out)
     return 0
 
 
