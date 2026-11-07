@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 110 |
-| 在研究日志里出现过 | 68 |
-| 有对应测试 | 39 |
+| 脚本总数 | 111 |
+| 在研究日志里出现过 | 69 |
+| 有对应测试 | 40 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -59,6 +59,7 @@
 | 脚本 | 类别 | 记录 | 测试 | 用途 |
 |---|---|:--:|:--:|---|
 | `__init__.py` | other | ✓ | ✓ | (no docstring) |
+| `audit_decision_claims.py` | audit | ✓ | ✓ | Every claim on the decision page must trace back to an artifact. |
 | `audit_staleness.py` | audit | ✓ | ✓ | Which published results are now stale, and which citations point at nothing? |
 | `build_chained_equity.py` | build | ✓ | — | Stitch two consecutive walk-forward equity curves into one continuous series. |
 | `build_dashboard.py` | build | — | ✓ | Build a self-contained visual dashboard over the research artifacts. |
