@@ -149,6 +149,22 @@ def collect() -> dict:
             costs.append(abs(one - base))
         payload["execution_delay_cost"] = max(costs)
 
+    naive = _csv(REPORTS / "naive_benchmark" / "paired.csv")
+    naive_panel = _csv(REPORTS / "naive_benchmark" / "panel.csv")
+    if naive is not None and naive_panel is not None:
+        payload["naive_benchmark"] = {
+            "worst_gap": float(naive["observed"].min()),
+            "best_gap": float(naive["observed"].max()),
+            "significant": int(((naive["low"] > 0) | (naive["high"] < 0)).sum()),
+            "cells": int(len(naive)),
+        }
+        pivot = naive_panel.pivot_table(index="window", columns="variant", values="turnover")
+        naive_col = next(c for c in pivot.columns if c.startswith("A"))
+        real_col = next(c for c in pivot.columns if c.startswith("C"))
+        payload["naive_benchmark"]["turnover_ratio"] = float(
+            (pivot[real_col] / pivot[naive_col]).median()
+        )
+
     check = _json(REPORTS / "publish_check" / "summary.json")
     if check:
         payload["publish_check"] = {"all_ok": bool(check["all_ok"]),
@@ -195,11 +211,19 @@ def render(payload: dict) -> str:
         lines.append("**这台机器值在哪（这比「值多少」更重要）**：把低波分换成随机分、其余约束全不变时，")
         lines.append("Sharpe 从 %.3f 掉到中位 %.3f（随机 p95 只有 %.3f，发布策略在第 %.0f 百分位，§23.102）。"
                      % (v["real_sharpe"], v["random_median"], v["random_p95"], v["real_percentile"] * 100))
+        if "naive_benchmark" in payload:
+            n = payload["naive_benchmark"]
+            lines.append("**但换成「最自然的替代品」就不一样了**：在册 128 只里直接选最平静的 8 只、不加趋势过滤与"
+                         "行业上限（§23.109）——三段 ΔSharpe 只有 %+.2f / %+.2f，**%d 格中 %d 格显著**，"
+                         "而它的换手只有发布策略的 1/%.1f。"
+                         % (n["worst_gap"], n["best_gap"], n["cells"], n["significant"], n["turnover_ratio"]))
+            lines.append("所以「打分有用」的准确版本是：**相对随机有用；相对最自然的替代品，只有趋势过滤在 "
+                         "2019–2021 那种行情里明显值钱**。")
         if "value_attribution_in_pool_ic" in payload:
-            lines.append("所以打分确实在干活。但低波分在**仍在册**名字上的池内 IC 只有 %+.3f（§23.77），而相对"
+            lines.append("另外，低波分在**仍在册**名字上的池内 IC 只有 %+.3f（§23.77），相对低波 1/3 篮子的增量"
+                         "超额也只有 +13.4%%/年、t=1.77（§23.40）——"
                          % payload["value_attribution_in_pool_ic"])
-            lines.append("低波 1/3 篮子的增量超额只有 +13.4%/年、t=1.77（§23.40）。两者并不矛盾：**它的价值主要在"
-                         "「待在低波 + 均线上方这个桶里并持续持有」，不在「在桶里挑出最好的 8 只」**。")
+            lines.append("这两条针对的是「在桶里精挑」，而上一段的正面结果针对的是「待在桶里」。")
         lines.append("")
     lines.append("选它的唯一理由是**它是唯一不取决于「你从哪天开始数」的配置**：单相位的 20 个等价日历")
     lines.append("在 2024–2026 上收益跨度 40.9pp，而混合把这些日历等权拿住（§23.82/§23.83）。")

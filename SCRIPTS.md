@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 111 |
-| 在研究日志里出现过 | 69 |
-| 有对应测试 | 40 |
+| 脚本总数 | 112 |
+| 在研究日志里出现过 | 70 |
+| 有对应测试 | 41 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -115,6 +115,7 @@
 | `run_lookahead_negative_control.py` | run | ✓ | — | Negative control: prove the look-ahead audit can actually fail. |
 | `run_lot_quantization.py` | run | — | — | How much of the capacity conclusion is only 100-share lot rounding? (23.17) |
 | `run_momentum_overlay.py` | run | ✓ | — | Does 12-1 momentum add anything on top of low volatility, in all 3 windows? |
+| `run_naive_benchmark.py` | run | ✓ | ✓ | Head to head against the obvious alternative, not against randomness. |
 | `run_oos_concentration.py` | run | — | — | Out-of-sample check of portfolio breadth and sector concentration. |
 | `run_oos_overlays.py` | run | — | — | Out-of-sample comparison of portfolio overlays (fixed parameters). |
 | `run_oos_risk_cost.py` | run | — | — | Out-of-sample sensitivity of volatility targeting and trading costs. |

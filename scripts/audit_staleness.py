@@ -42,6 +42,7 @@ CRITICAL = (
     # set covers the generator's dependencies, so the page cannot silently rest
     # on an artifact nobody is watching.
     "random_control",
+    "naive_benchmark",
     "quarter_consistency",
     "execution_timing",
     "year_table_blend",

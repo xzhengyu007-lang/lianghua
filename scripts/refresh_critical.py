@@ -48,6 +48,7 @@ PLAN = [
     ("execution_timing", "run_execution_timing.py", []),
     ("quarter_consistency", "run_quarter_consistency.py", []),
     ("random_control", "run_random_control.py", []),
+    ("naive_benchmark", "run_naive_benchmark.py", []),
 ]
 
 POST = [

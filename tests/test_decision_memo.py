@@ -61,6 +61,13 @@ def test_memo_opens_with_the_three_things_that_matter():
     assert "「有效」不等于「已被证明」" in text
 
 
+def test_memo_does_not_overclaim_against_the_obvious_alternative():
+    """23.102's random-control win must sit next to the naive-benchmark tie."""
+    text = MEMO.read_text(encoding="utf-8")
+    assert "最自然的替代品" in text
+    assert "6 格中 0 格显著" in text
+
+
 def test_memo_tabulates_every_route_to_more_power():
     """The three falsified routes must stay visible next to the two live ones."""
     text = MEMO.read_text(encoding="utf-8")
