@@ -84,6 +84,16 @@ def test_runbook_points_at_the_authority_documents():
         assert name in text, name
 
 
+def test_runbook_carries_the_six_conclusion_checks():
+    """The self-check list is the operational form of 23.107 and 23.118."""
+    text = _text()
+    assert "写结论前的自检清单" in text
+    for marker in ("适用范围", "一次改了几个变量", "能不能生成", "扫描的边界", "单相位", "换表达"):
+        assert marker in text, marker
+    assert "§23.118" in text
+    assert "修订必须写回原处" in text
+
+
 def test_runbook_lists_the_three_self_checks():
     text = _text()
     for script in ("run_verification.py", "run_publish_check.py", "audit_staleness.py"):
