@@ -133,6 +133,22 @@ def collect() -> dict:
         if row:
             payload["value_attribution_in_pool_ic"] = float(row["mean_ic"])
 
+    quarter = _json(REPORTS / "quarter_consistency" / "summary.json")
+    if quarter:
+        payload["sign_test"] = {
+            "power": float(quarter["sign_test_power"]),
+            "quarters_for_80pct": quarter["quarters_for_80pct_power"],
+        }
+
+    exec_panel = _csv(REPORTS / "execution_timing" / "panel.csv")
+    if exec_panel is not None:
+        costs = []
+        for window, block in exec_panel.groupby("window"):
+            base = float(block[block["delay_days"] == 0]["sharpe"].iloc[0])
+            one = float(block[block["delay_days"] == 1]["sharpe"].iloc[0])
+            costs.append(abs(one - base))
+        payload["execution_delay_cost"] = max(costs)
+
     check = _json(REPORTS / "publish_check" / "summary.json")
     if check:
         payload["publish_check"] = {"all_ok": bool(check["all_ok"]),
@@ -216,21 +232,30 @@ def render(payload: dict) -> str:
     lines.append("## 3. 加仓前还缺什么")
     lines.append("")
     if "evidence" in payload:
-        e = payload["evidence"]
-        lines.append("检出力只有 %.0f%%，而下面三样都能把它抬高——按性价比排序：" % ((e["power_at_7_3y"] or 0) * 100))
-        lines.append("")
-        lines.append("1. **时间**。什么都不做，再跑 %.1f 年到 80%% 把握。" % (e["analytic"]["years_for_80pct_power"] - 7.14))
-        if "breadth" in payload:
-            b = payload["breadth"]
-            lines.append("2. **第二个市场（≥120 只）**。同一套打分在 %d 只的随机子池上中位 Sharpe 只有 %.3f，"
-                         % (60, b["median_60"]))
-            lines.append("   而 %d 只有 %.3f；若两市场相关 0.3，等效样本 1.54 倍，7.1 年变 10.9 年（§23.93）。"
-                         % (120, b["median_120"]))
-            lines.append("   注意 **60 只不够**：p10 只有 %.3f，抽一次很可能拿到接近 0 的结果。"
-                         % b["p10_60"])
-        lines.append("3. **换更长的调仓周期**。60 日把换手从 11.5x 砍到 5.7x，净 Sharpe 打平（§23.91）——"
-                     "它不提升收益，但让容量和成本假设更宽松。")
-        lines.append("")
+        lines.append("检出力只有 %.0f%%。想把「有效」从 suggestive 推到 established，只有下面五条路，而其中三条"
+                     % ((payload["evidence"]["power_at_7_3y"] or 0) * 100))
+        lines.append("已经被本仓实测证伪——所以这张表本身就是结论：")
+    else:
+        lines.append("想把「有效」从 suggestive 推到 established，可走的路只有下面几条：")
+    lines.append("")
+    lines.append("| 路径 | 结论 | 依据 |")
+    lines.append("|---|---|---|")
+    if "evidence" in payload:
+        lines.append("| **时间** | 唯一确定有效，但慢：再跑 %.1f 年 | §23.89 |"
+                     % (payload["evidence"]["analytic"]["years_for_80pct_power"] - 7.14))
+    if "breadth" in payload:
+        b = payload["breadth"]
+        lines.append("| **第二个 ≥120 只的市场** | 有效，但需要外部数据：等效样本 1.54 倍，7.1 年变 10.9 年；"
+                     "60 只不够（随机子池中位 Sharpe %.3f、p10 %.3f） | §23.93 |"
+                     % (b["median_60"], b["p10_60"]))
+    lines.append("| 更长的调仓周期 | **不是杠杆**：换手砍半但净 Sharpe 打平 | §23.91 |")
+    if "execution_delay_cost" in payload:
+        lines.append("| 换执行时点 | **不是杠杆**：晚一天约 %.2f Sharpe，九格区间全含 0 | §23.101 |"
+                     % payload["execution_delay_cost"])
+    if "sign_test" in payload:
+        lines.append("| 换检验统计量 | **不是杠杆**：符号检验 %.0f%% 检出力 vs Sharpe 区间 56%% | §23.104 |"
+                     % (payload["sign_test"]["power"] * 100))
+    lines.append("")
     lines.append("**明确写下什么会推翻上面的判断**（这些是止损条件，不是预测）：")
     lines.append("")
     lines.append("- 在册口径的低波 IC 跌破 0（当前 +0.031，§23.77）；")

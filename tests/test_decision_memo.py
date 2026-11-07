@@ -53,6 +53,15 @@ def test_memo_quotes_the_interval_not_only_the_point():
     assert "最差相位" in text
 
 
+def test_memo_tabulates_every_route_to_more_power():
+    """The three falsified routes must stay visible next to the two live ones."""
+    text = MEMO.read_text(encoding="utf-8")
+    assert "只有下面五条路" in text
+    for section in ("§23.89", "§23.93", "§23.91", "§23.101", "§23.104"):
+        assert section in text, section
+    assert text.count("不是杠杆") >= 3
+
+
 def test_memo_says_where_the_value_comes_from():
     """23.102's positive result must sit next to 23.40/23.77's caveat."""
     text = MEMO.read_text(encoding="utf-8")
