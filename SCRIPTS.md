@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 108 |
-| 在研究日志里出现过 | 66 |
-| 有对应测试 | 36 |
+| 脚本总数 | 109 |
+| 在研究日志里出现过 | 67 |
+| 有对应测试 | 37 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -100,6 +100,7 @@
 | `run_cross_pool_random.py` | run | ✓ | ✓ | Does the edge survive a narrower cross-section? Random sub-pool test. |
 | `run_delisting_exit_price.py` | run | — | — | Where a delisted holding gets liquidated: that day close or that day open (23.18). |
 | `run_diversification_audit.py` | run | — | — | Does the book actually diversify, or only look diversified? |
+| `run_execution_timing.py` | run | ✓ | ✓ | How much of the edge survives being late? |
 | `run_factor_cohorts.py` | run | ✓ | ✓ | Decompose every factor's IC into "still listed" versus "eventually delisted". |
 | `run_factor_study.py` | run | ✓ | — | Factor study: does anything survive after low volatility is controlled for? |
 | `run_final.py` | run | — | — | Archived full-period baseline: report, dashboard and factor diagnostics (superseded, kept for history). |

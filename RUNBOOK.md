@@ -36,6 +36,15 @@ python -m venv .venv
 第 6 步不过**不要**继续：指纹红了说明配置或引擎变了，要么同步改常数（并在
 `RESEARCH_LOG` 里说明为什么），要么回滚。
 
+**新增或改名任何脚本后**，还要多跑一步（否则 `SCRIPTS.md` 过期、测试会红）：
+
+```powershell
+.\\.venv\\Scripts\\python.exe scripts\\build_script_inventory.py
+```
+
+同理，新增了一个报告目录，要跑 `build_report_index.py`；改了发布配置，要跑
+`check_artifact_fingerprints.py --update` 并在日志里写明为什么。
+
 ## 3. 非零退出但属正常
 
 | 命令 | 退出码 | 为什么正常 | 真正的判断标准 |
