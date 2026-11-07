@@ -268,7 +268,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -319,7 +319,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **317 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **321 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
@@ -415,9 +415,21 @@ Sharpe 0.754、回撤 -17.6%。** 相位平均把日历运气平均掉，收益�
 | 2025 | +1.76% | 10.90% | 0.22 | -5.07% |
 | 2026（至 11 月） | +8.02% | 13.17% | 0.79 | -8.74% |
 
-没有亏损年，但年度 Sharpe 从 0.22 到 1.98：2025 是最弱的一年（+1.76%，低波在
-低波行情里没有相对优势），2024 最强。跨年边界（2021-12→2022-01、2023-12→2024-01）
-两侧各自重启账本，所以这两年略偏保守。见 §23.71 与 `reports/year_table/`。
+上表是**单相位 @18%** 的记录——也就是 §23.82 认定的最幸运相位。它的“没有亏损年”
+**不成立于发布配置**：换成混合后 2022 与 2025 都为负（−1.76% / −2.28%，12% 档），
+而单相位在两档目标下才是 0 个负年。所以**负年来自“混合”，不来自“降杠杆”**（§23.86，
+`reports/year_table_blend/`）。
+
+| 配置 | 全期收益 | Sharpe | 最大回撤 |
+|---|---:|---:|---:|
+| 单相位 @18%（上表口径） | +192.63% | 1.160 | -21.46% |
+| 单相位 @12% | +155.90% | 1.143 | -18.52% |
+| 混合 @18% | +109.12% | 0.886 | -20.59% |
+| **混合 @12%（部署口径）** | **+95.87%** | **0.902** | **-15.70%** |
+
+一致性检验：三段相位中位复利是 +111.6%，混合实测 +109.12%；相位 0 三段复利是 +188.6%，
+单相位实测 +192.63%。两条都对得上，说明**混合是“中位型”估计，而 +192.63% 是三次好运
+窗口的复利**。2019 是残年（平均仓位 0.10，指标不可按年度读）。
 
 2025 为什么走平，做过一次归因（§23.73，`reports/attribution_2025*/`）：独立跑 2025 是 -0.77%，同年高波 33% 等权 +13.83% > 全池 +12.09% > 低波 33% 等权 +7.47%——波动因子全年逆风；更值得注意的是对低波桶还跑输 8.29pp（选股 -4.42、配置 -3.73），亏损集中在科技选股（-8.81pp）与能源（-5.90pp），金融 +3.94pp 是唯一亮点。所以 2025 不只是风格不顺，选股也没兑现。
 
