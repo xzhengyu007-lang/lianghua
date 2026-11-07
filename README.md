@@ -300,7 +300,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_publish_check.py（发布配置自检：可复现/指纹/因果）, run_power_recheck.py（按可复现 Sharpe 重算检出力）, run_cadence_blend.py（混合口径下的调仓周期）, run_cross_pool.py（切池检验：宽度 vs 独立性）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_publish_check.py（发布配置自检：可复现/指纹/因果）, run_power_recheck.py（按可复现 Sharpe 重算检出力）, run_cadence_blend.py（混合口径下的调仓周期）, run_cross_pool.py（切池检验：宽度 vs 独立性）, run_cross_pool_random.py（随机子池：宽度斜坡）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -351,7 +351,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **344 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **348 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
@@ -513,6 +513,10 @@ rebalance_days=20`，年度重置，PIT 267 只，重建口径），三段独立
   而全池 **1.269**。平均两两相关 0.333（等效独立池 2.2/6），但**独立没用——因为子池本身没有 alpha**。
   低波核心吃的是跨行业宽度；切窄了因子就失效。要提检出力，需要的是“另一个同样宽的横截面且溢价
   可迁移”，不是“一些不相关的小池子”。
+- **宽度是一条连续斜坡，不是开关**（§23.93，`reports/cross_pool_random/`）：随机抽 60 / 120 / 267 只，
+  Sharpe 中位 **0.391 / 0.824 / 1.269**——每翻一倍宽度约 +0.4。但 60 只时**仍有 95% 的抽样是正的**
+  （行业池只有 50%），所以真正杀死行业池的是**集中**而不是窄。第二市场要有 **≥120 只**才划算：
+  60 只的期望只有 0.39、p10 仅 0.059。
 
 检出力可以直接算（`reports/power_study/`，§23.64）：真 Sharpe 1.0、年化波动 12% 时，3 年样本让 95% 区间排除 0 的概率只有 **6%**，6 年才 53%，80% 把握要 **9.3 年**（Sharpe 1.5 也要 5.8 年）。三段样本外合计 7.3 年，检出力约 65%——所以「三段都为正」是有信息量的证据，但离「被证明」还差两年左右，而且这 7.3 年并不独立。
 
