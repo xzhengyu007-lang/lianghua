@@ -1,0 +1,842 @@
+{
+  "sh600068": {
+    "name": "葛洲坝",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-09-01"
+  },
+  "sh600069": {
+    "name": "退市银鸽",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-08-20"
+  },
+  "sh600070": {
+    "name": "*ST富润",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-04-10"
+  },
+  "sh600074": {
+    "name": "退市保千",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-05-26"
+  },
+  "sh600077": {
+    "name": "*ST宋都",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-13"
+  },
+  "sh600083": {
+    "name": "*ST博信",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-01-16"
+  },
+  "sh600086": {
+    "name": "退市金钰",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-03-10"
+  },
+  "sh600090": {
+    "name": "退市济堂",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-30"
+  },
+  "sh600091": {
+    "name": "退市明科",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-15"
+  },
+  "sh600093": {
+    "name": "退市易见",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-16"
+  },
+  "sh600112": {
+    "name": "*ST天成",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-07-19"
+  },
+  "sh600122": {
+    "name": "*ST宏图",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-05-26"
+  },
+  "sh600139": {
+    "name": "*ST西源",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-02-27"
+  },
+  "sh600145": {
+    "name": "退市新亿",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-04-21"
+  },
+  "sh600146": {
+    "name": "退市环球",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-23"
+  },
+  "sh600175": {
+    "name": "退市美都",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-08-07"
+  },
+  "sh600190": {
+    "name": "退市锦港",
+    "sector": "运输",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-07-18"
+  },
+  "sh600193": {
+    "name": "退市创兴",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-29"
+  },
+  "sh600200": {
+    "name": "退市苏吴",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-12-29"
+  },
+  "sh600209": {
+    "name": "退市罗顿",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-15"
+  },
+  "sh600213": {
+    "name": "*ST亚星",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-08-15"
+  },
+  "sh600220": {
+    "name": "ST阳光",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-13"
+  },
+  "sh600225": {
+    "name": "退市卓朗",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-02-27"
+  },
+  "sh600240": {
+    "name": "退市华业",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-01-23"
+  },
+  "sh600242": {
+    "name": "退市中昌",
+    "sector": "运输",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-20"
+  },
+  "sh600247": {
+    "name": "*ST成城",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-02-24"
+  },
+  "sh600260": {
+    "name": "*ST凯乐",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-02-02"
+  },
+  "sh600275": {
+    "name": "退市昌鱼",
+    "sector": "农业",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-15"
+  },
+  "sh600277": {
+    "name": "ST亿利",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-21"
+  },
+  "sh600290": {
+    "name": "*ST华仪",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-12-25"
+  },
+  "sh600291": {
+    "name": "退市西水",
+    "sector": "金融",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-07"
+  },
+  "sh600297": {
+    "name": "广汇汽车",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-07-17"
+  },
+  "sh600306": {
+    "name": "退市商城",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-19"
+  },
+  "sh600311": {
+    "name": "*ST荣华",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-03-02"
+  },
+  "sh600317": {
+    "name": "营口港",
+    "sector": "运输",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-01-14"
+  },
+  "sh600321": {
+    "name": "正源股份",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-05-30"
+  },
+  "sh600355": {
+    "name": "*ST精伦",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-04-03"
+  },
+  "sh600385": {
+    "name": "退市金泰",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-30"
+  },
+  "sh600387": {
+    "name": "退市海越",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-07-04"
+  },
+  "sh600393": {
+    "name": "ST粤泰",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-08"
+  },
+  "sh600401": {
+    "name": "退市海润",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2019-07-08"
+  },
+  "sh600421": {
+    "name": "退市华嵘",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-22"
+  },
+  "sh600462": {
+    "name": "退市九有",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-07-14"
+  },
+  "sh600466": {
+    "name": "*ST蓝光",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-05-09"
+  },
+  "sh600485": {
+    "name": "*ST信威",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-04-20"
+  },
+  "sh600532": {
+    "name": "退市未来",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-19"
+  },
+  "sh600555": {
+    "name": "退市海创",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-07-06"
+  },
+  "sh600565": {
+    "name": "ST迪马",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-21"
+  },
+  "sh600599": {
+    "name": "退市熊猫",
+    "sector": "金融",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-22"
+  },
+  "sh600608": {
+    "name": "退市沪科",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-29"
+  },
+  "sh600614": {
+    "name": "退市鹏起",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-07-14"
+  },
+  "sh600634": {
+    "name": "退市富控",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-07-14"
+  },
+  "sh600636": {
+    "name": "退市国化",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-22"
+  },
+  "sh600647": {
+    "name": "退市同达",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-26"
+  },
+  "sh600652": {
+    "name": "退市游久",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-15"
+  },
+  "sh600677": {
+    "name": "*ST航通",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-04-29"
+  },
+  "sh600687": {
+    "name": "退市刚泰",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-02-24"
+  },
+  "sh600695": {
+    "name": "退市绿庭",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-07"
+  },
+  "sh600696": {
+    "name": "退市岩石",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-22"
+  },
+  "sh600701": {
+    "name": "退市工新",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-04-26"
+  },
+  "sh600705": {
+    "name": "中航产融",
+    "sector": "金融",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-04-02"
+  },
+  "sh600723": {
+    "name": "首商股份",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-09-15"
+  },
+  "sh600747": {
+    "name": "退市大控",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2019-12-06"
+  },
+  "sh600766": {
+    "name": "退市园城",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-26"
+  },
+  "sh600767": {
+    "name": "退市运盛",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-20"
+  },
+  "sh600781": {
+    "name": "退市辅仁",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-19"
+  },
+  "sh600804": {
+    "name": "退市鹏博",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-06-30"
+  },
+  "sh600811": {
+    "name": "*ST东方",
+    "sector": "农业",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-04-14"
+  },
+  "sh600823": {
+    "name": "*ST世茂",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-05-15"
+  },
+  "sh600836": {
+    "name": "*ST易连",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-17"
+  },
+  "sh600837": {
+    "name": "海通证券",
+    "sector": "金融",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-02-05"
+  },
+  "sh600856": {
+    "name": "退市中天",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-15"
+  },
+  "sh600870": {
+    "name": "退市厦华",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-23"
+  },
+  "sh600890": {
+    "name": "退市中房",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-15"
+  },
+  "sh600891": {
+    "name": "退市秋林",
+    "sector": "农业",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-04-30"
+  },
+  "sh600896": {
+    "name": "退市海医",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-07-18"
+  },
+  "sh600898": {
+    "name": "*ST美讯",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-01-10"
+  },
+  "sh600978": {
+    "name": "*ST宜生",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-02-22"
+  },
+  "sh601028": {
+    "name": "玉龙股份",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-03-26"
+  },
+  "sh601258": {
+    "name": "*ST庞大",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-05-24"
+  },
+  "sh601558": {
+    "name": "退市锐电",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-06-23"
+  },
+  "sh601989": {
+    "name": "中国重工",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-08-12"
+  },
+  "sh603003": {
+    "name": "退市龙宇",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-06-30"
+  },
+  "sh603056": {
+    "name": "德邦股份",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-01-20"
+  },
+  "sh603133": {
+    "name": "退市碳元",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-26"
+  },
+  "sh603157": {
+    "name": "退市拉夏",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-05-17"
+  },
+  "sh603388": {
+    "name": "*ST元成",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-11-10"
+  },
+  "sh603555": {
+    "name": "ST贵人",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-03-07"
+  },
+  "sh603603": {
+    "name": "退市博天",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-04-18"
+  },
+  "sh603963": {
+    "name": "*ST大药",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-02-07"
+  },
+  "sh603996": {
+    "name": "退市中新",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-05-17"
+  },
+  "sh605081": {
+    "name": "退市太和",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-29"
+  },
+  "sh688086": {
+    "name": "退市紫晶",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-30"
+  },
+  "sh688287": {
+    "name": "退市观典",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-06-08"
+  },
+  "sh688555": {
+    "name": "退市泽达",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-30"
+  },
+  "sz000004": {
+    "name": "国华退",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-07-13"
+  },
+  "sz000005": {
+    "name": "ST星源",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-03-05"
+  },
+  "sz000018": {
+    "name": "神城A退",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-01-06"
+  },
+  "sz000023": {
+    "name": "*ST深天",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-07-24"
+  },
+  "sz000038": {
+    "name": "大通退",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-07-11"
+  },
+  "sz000040": {
+    "name": "*ST旭蓝",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-03-31"
+  },
+  "sz000043": {
+    "name": "",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2019-12-13"
+  },
+  "sz000046": {
+    "name": "*ST泛海",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-12-27"
+  },
+  "sz000150": {
+    "name": "*ST宜康",
+    "sector": "医药",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-04-27"
+  },
+  "sz000413": {
+    "name": "ST旭电",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-08-14"
+  },
+  "sz000416": {
+    "name": "*ST民控",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-04-24"
+  },
+  "sz000502": {
+    "name": "绿景退",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-24"
+  },
+  "sz000540": {
+    "name": "*ST中天",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-05-18"
+  },
+  "sz000584": {
+    "name": "工智退",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-07-10"
+  },
+  "sz000585": {
+    "name": "东电退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-05-23"
+  },
+  "sz000587": {
+    "name": "*ST金洲",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-02-02"
+  },
+  "sz000606": {
+    "name": "顺利退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-07-05"
+  },
+  "sz000611": {
+    "name": "天首退",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-27"
+  },
+  "sz000613": {
+    "name": "东海A退",
+    "sector": "运输",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-28"
+  },
+  "sz000616": {
+    "name": "*ST海投",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-13"
+  },
+  "sz000622": {
+    "name": "恒立退",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-07-15"
+  },
+  "sz000627": {
+    "name": "*ST天茂",
+    "sector": "金融",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-08-13"
+  },
+  "sz000638": {
+    "name": "*ST万方",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2026-04-13"
+  },
+  "sz000662": {
+    "name": "天夏退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-04-09"
+  },
+  "sz000666": {
+    "name": "经纬纺机",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-08-31"
+  },
+  "sz000667": {
+    "name": "ST美置",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-05-25"
+  },
+  "sz000671": {
+    "name": "ST阳光城",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-09"
+  },
+  "sz000673": {
+    "name": "当代退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-07-01"
+  },
+  "sz000687": {
+    "name": "华讯退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-06-16"
+  },
+  "sz000693": {
+    "name": "华泽退",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2019-07-08"
+  },
+  "sz000732": {
+    "name": "ST泰禾",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-06-02"
+  },
+  "sz000760": {
+    "name": "斯太退",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-07-22"
+  },
+  "sz000780": {
+    "name": "ST平能",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2021-12-16"
+  },
+  "sz000806": {
+    "name": "银河退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-07-05"
+  },
+  "sz000835": {
+    "name": "长动退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2022-05-20"
+  },
+  "sz000836": {
+    "name": "ST富通",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-17"
+  },
+  "sz000851": {
+    "name": "*ST高鸿",
+    "sector": "金融",
+    "source": "manual primary-business classification",
+    "last_bar": "2025-09-26"
+  },
+  "sz000861": {
+    "name": "海印股份",
+    "sector": "消费",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-08-05"
+  },
+  "sz000918": {
+    "name": "*ST嘉凯",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2023-05-31"
+  },
+  "sz000939": {
+    "name": "凯迪退",
+    "sector": "能源",
+    "source": "manual primary-business classification",
+    "last_bar": "2020-12-16"
+  },
+  "sz000961": {
+    "name": "ST中南",
+    "sector": "地产",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-05-08"
+  },
+  "sz000971": {
+    "name": "*ST高升",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-04"
+  },
+  "sz000976": {
+    "name": "*ST华铁",
+    "sector": "工业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-07-25"
+  },
+  "sz000982": {
+    "name": "中银绒业",
+    "sector": "农业",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-21"
+  },
+  "sz000996": {
+    "name": "中期退",
+    "sector": "科技",
+    "source": "manual primary-business classification",
+    "last_bar": "2024-06-27"
+  }
+}

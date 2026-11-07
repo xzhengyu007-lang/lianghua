@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+data/cache/
+data/cache_rawcheck/
+reports/runs/
+.DS_Store
+
+# scratch space: one-off agent scripts, run logs and generated research output
+.tmp_*
+logs/
+reports/
