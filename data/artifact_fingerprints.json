@@ -1,0 +1,25 @@
+{
+  "updated": "2026-11-08 05:18",
+  "hashes": {
+    "factor_cohorts": {
+      "summary.json": "f277f031a530588f3c951104b392022502ef4b00d6186fcd6b2e9b1db8bbd1fe",
+      "ic_by_cohort.csv": "d66aad52370a6bbbf786bcad1ec9a33b9fefafe1b4989eeaae39fb761638cde4"
+    },
+    "breadth_ic": {
+      "summary.json": "a0d3d23538ea6706ceb4b676cbf269c5bc0e6b62a26d6349fc058af8ce744464",
+      "ic_by_horizon.csv": "b57d46691c513a148a38d03a0b577150e077378c15508088887d7d58909fbd6c"
+    },
+    "pnl_cohorts": {
+      "summary.json": "fd1a3725bba70342d892df74f68aba50f017bcc2a6b488b10686b46d86dfcded",
+      "summary.csv": "7801e0e4b4769d66c693524692251ce124198e1fbb611e32e1212dda489d8350"
+    },
+    "selection_slack": {
+      "summary.json": "247a39837c85851fd0471ff230fc8db3f08a13f9839b83149ca5adf76c51773b",
+      "yearly.csv": "c5914e2d8ff819a0d04c2186ca760312b8492768c09596daf18fbf623c5fa5c3"
+    },
+    "phase_recheck": {
+      "spread.csv": "f83030f3de7d035263ffd781136cff666a513f82e2de96866d6a8aec2b2748fc",
+      "phases.csv": "5d494e1a17e40b13bcf09f285be6161266e5c93f33cf02c26e9c6ac4998d0e81"
+    }
+  }
+}

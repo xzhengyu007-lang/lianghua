@@ -103,6 +103,7 @@
 - 23.96 一条命令重跑「决策关键集」——以及为什么这轮没做面板缓存
 - 23.97 端到端演练：文档写的流程能不能照着走通
 - 23.98 反向审计：106 个脚本里 42 个既没被记录也没被测试
+- 23.99 产物指纹：把「能重跑」升级成「重跑后对得上」
 <!-- /TOC -->
 
 ## 1. 数据源与范围
@@ -7078,10 +7079,9 @@ momentum 仍在册 t=1.68（不显著）。5 日与 60 日表见 `reports/factor
 | 有对应测试 | 32 |
 | **两者都没有** | **42** |
 
-（上表是**修复前**的快照。给 9 个脚本补上 docstring、并把它们写进本节之后，重新生成的结果
-变成 **106 / 64 已记录 / 34 有测试 / 40 孤儿**——脚本名一旦出现在日志正文里，「已记录」就会变。
-文字与统计互相影响，这是个小而真实的例子：**任何把文档存在与否当作指标的审计，都会被写作
-本身推动**。）
+（上表是**修复前**的快照。给 9 个脚本补上 docstring、并把脚本名写进本节之后，「已记录」与
+「有测试」两列都会各自上升——脚本名一出现在日志正文里它就会变。**当前数字一律以生成物
+`SCRIPTS.md` 为准**，本节不再抄写它们：文字与统计互相影响，抄一次就会过期一次。）
 
 三点：
 
@@ -7114,6 +7114,55 @@ momentum 仍在册 t=1.68（不显著）。5 日与 60 日表见 `reports/factor
   `run_adjustment_rebuild`、`run_adv_lookahead`、`run_delisting_exit_price`、`run_final`、
   `run_lot_quantization`、`run_signal_consistency`
 - `FINDINGS.md` 第 70 条
+
+### 23.99 产物指纹：把「能重跑」升级成「重跑后对得上」
+
+§23.98 的结论是研究脚本真正缺的不是单元测试，而是**"跑出来的东西符合预期"的断言**。这一节做
+它的最小可用版本，覆盖下游分析所依赖的五个上游研究（`factor_cohorts`、`breadth_ic`、
+`pnl_cohorts`、`selection_slack`、`phase_recheck`）。
+
+做法很直接（`scripts/check_artifact_fingerprints.py`）：
+
+- 每个报告取两份主产物（`summary.json` + 一张主 CSV），算内容 sha256；
+- 基线存在 `data/artifact_fingerprints.json`（`data/` 是入库的，`data/cache/` 不是）；
+- 默认模式逐文件比对，输出 `CHANGED 报告/文件 旧摘要 -> 新摘要`，任一不符即非零退出。
+
+#### 负对照（这条最重要）
+
+只报「0 problems」不能证明机制有效。所以做了一次破坏性对照：给
+`reports/factor_cohorts/summary.json` 末尾追加一个空格，再跑检查——
+
+```
+  CHANGED  factor_cohorts/summary.json  f277f031a530 -> 78a6a5e861b7
+artifacts checked: 10 files across 5 reports, 1 problems
+exit=1
+```
+
+还原后重新检查：`0 problems`、exit 0。**一个字节的差异能被指到具体文件**，这是"能用"
+与"看起来能用"的区别。
+
+三点：
+
+1. **它检测变化，不检测正确。** 一份错的但稳定的产物会通过——这是设计上的取舍：正确性由
+   两套自检、因果审计与测试负责；指纹负责的是"没人告诉你数字变了"这一类。
+2. **更新基线必须是刻意动作。** 重跑研究 → 读新数字 → `--update` → **在 RESEARCH_LOG 里写清为什么变**。
+   顺手 `--update` 就等于把哨兵关掉。这条写进了脚本 docstring。
+3. **覆盖面只有 5 个报告。** 选的是"下游全都读它"的那一层；更下游的报告变动不影响结论，
+   给它们加指纹只会制造噪音。
+
+#### 局限（诚实列出）
+
+- 只覆盖 5/240 个报告目录。这不是全仓的不变量，是**上游哨兵**。
+- 哈希对格式敏感：改一个空格也算变化。这是刻意的（宁可误报），代价是手工编辑那两份文件后
+  必须重新基线化。
+- 它不记录"变了多少"。真要定位数值差异，仍要重跑并 diff `summary.json`。
+
+#### 定位
+
+- `scripts/check_artifact_fingerprints.py`、`data/artifact_fingerprints.json`（基线，入库）
+- `tests/test_artifact_fingerprints.py`（六项：目标集合、三种问题的判定、一致时静默、与基线吻合）
+- `FINDINGS.md` 第 71 条
+
 
 
 

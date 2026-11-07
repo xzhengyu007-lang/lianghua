@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 106 |
-| 在研究日志里出现过 | 64 |
-| 有对应测试 | 34 |
+| 脚本总数 | 107 |
+| 在研究日志里出现过 | 65 |
+| 有对应测试 | 35 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -68,6 +68,7 @@
 | `build_research_toc.py` | build | — | ✓ | Keep a table of contents at the top of RESEARCH_LOG.md. |
 | `build_script_inventory.py` | build | ✓ | ✓ | Inventory of every script: what it does, whether it is documented, whether it is tested. |
 | `build_total_return_cache.py` | build | ✓ | — | Persist rebuilt total-return series next to the provider cache. |
+| `check_artifact_fingerprints.py` | check | ✓ | ✓ | Fingerprint the upstream research artifacts so a silent change cannot hide. |
 | `check_ledger_replay.py` | check | ✓ | — | Verify the paper ledger reconciles with the backtester. |
 | `download_pit_raw.py` | download | — | — | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_loop.py` | download | ✓ | — | Retry raw downloads for the PIT pool until every symbol has a cache. |

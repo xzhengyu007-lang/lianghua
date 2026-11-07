@@ -82,6 +82,7 @@ README 讲怎么用，`RESEARCH_LOG.md` 讲怎么得到，这张表讲**现在�
 | 68 | 决策关键集可一条命令重跑，且登记表与审计的关键集由测试互锁 | scripts/refresh_critical.py 跑 12 个研究脚本 + 2 个自检，跑完重做新鲜度检查（答案是「关键集新鲜」而非「退出码 0」）；全量约 25 分钟，支持 --only/dry-run；tests 断言 PLAN 与 audit_staleness.CRITICAL 集合完全相等（写脚本时确实打错过一个名字，这类手误只能靠互锁抓） | **高**（脚本 + 测试 + 实跑） | §23.96 |
 | 69 | 端到端演练全部走通，并暴露一个文档陷阱：cache-audit 恒以退出码 1 结束 | 八步实跑（PIT 体检/缓存审计/自检/简报/信号/发布自检/决策页/新鲜度）全部按预期；cache-audit 的 1 是 §23.19 加法复权的预期行为，真正判据是 _tr 文件 0 problem；新增 RUNBOOK.md 并把「非零退出但属正常」单列，由五项测试守着 | **高**（实跑 + 测试） | §23.97 |
 | 70 | 反向审计：106 个脚本中 42 个既未记录也未测试；其中 9 个连 docstring 都没有，已补齐 | 106 脚本 / 62 在日志中被点过名 / 32 有测试 / 42 孤儿；42 多为上一轮研究的脚本（产物与结论都在，只是脚本名未进早期章节的「定位」）；本轮给 9 个无 docstring 的补上一行并核准引用（§23.16–23.19），现除 __init__.py 外全有 docstring，已进测试；新增 SCRIPTS.md 生成物 + 四项守卫 | **高**（文件级扫描 + 测试） | §23.98 |
+| 71 | 五个上游研究产物已加内容指纹，一字节差异可定位到文件；负对照验证有效 | scripts/check_artifact_fingerprints.py 对 factor_cohorts / breadth_ic / pnl_cohorts / selection_slack / phase_recheck 各两份主产物做 sha256，基线入库于 data/artifact_fingerprints.json；负对照：追加一个空格 → CHANGED ... f277f031a530 -> 78a6a5e861b7、exit 1，还原后 0 problems；检测变化而非正确性，更新基线必须刻意 | **高**（负对照 + 六项测试） | §23.99 |
 
 ## 已经被证伪的方向（不要再试）
 
