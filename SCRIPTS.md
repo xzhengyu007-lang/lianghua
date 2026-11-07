@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 113 |
-| 在研究日志里出现过 | 71 |
-| 有对应测试 | 42 |
+| 脚本总数 | 114 |
+| 在研究日志里出现过 | 72 |
+| 有对应测试 | 43 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -139,6 +139,7 @@
 | `run_quarter_consistency.py` | run | ✓ | ✓ | A sign test on quarters: far more powerful than a Sharpe interval, and weaker. |
 | `run_random_control.py` | run | ✓ | ✓ | Does the ranking add anything over random selection with the same constraints? |
 | `run_random_control_pit.py` | run | — | — | Random-selection control on the point-in-time pool. |
+| `run_rank_overlap.py` | run | ✓ | ✓ | How often does the 0.8/0.2 blend actually change the basket, and does it help? |
 | `run_rebalance_anchor.py` | run | ✓ | — | Rebalance-anchor sensitivity: how much of the headline is calendar luck? |
 | `run_rebalance_calendar.py` | run | ✓ | — | Rebalance calendar: fixed 20-bar cadence vs calendar month-end. |
 | `run_robustness.py` | run | — | — | Robustness study for the default low-vol core configuration. |
