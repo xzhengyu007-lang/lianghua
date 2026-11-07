@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 114 |
-| 在研究日志里出现过 | 72 |
-| 有对应测试 | 43 |
+| 脚本总数 | 115 |
+| 在研究日志里出现过 | 73 |
+| 有对应测试 | 44 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -63,6 +63,7 @@
 | `audit_staleness.py` | audit | ✓ | ✓ | Which published results are now stale, and which citations point at nothing? |
 | `build_chained_equity.py` | build | ✓ | — | Stitch two consecutive walk-forward equity curves into one continuous series. |
 | `build_dashboard.py` | build | — | ✓ | Build a self-contained visual dashboard over the research artifacts. |
+| `build_data_manifest.py` | build | ✓ | ✓ | A manifest of the cached data, so a fresh checkout can prove it has the same data. |
 | `build_decision_memo.py` | build | ✓ | ✓ | One page that answers "should we put money on this?" without reading 93 sections. |
 | `build_delisted_universe.py` | build | ✓ | — | Build a point-in-time universe from real delisted names. |
 | `build_report_index.py` | build | — | — | Build reports/INDEX.md: one line per report directory with its headline metrics. |

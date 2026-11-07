@@ -45,6 +45,19 @@ python -m venv .venv
 同理，新增了一个报告目录，要跑 `build_report_index.py`；改了发布配置，要跑
 `check_artifact_fingerprints.py --update` 并在日志里写明为什么。
 
+### 2.1 如果你是刚 clone 下来的
+
+先下载数据，再核对**拿到的是不是作者那一份**：
+
+```powershell
+.\\.venv\\Scripts\\python.exe -m quant_system --universe broad download --count 1800
+.\\.venv\\Scripts\\python.exe -m quant_system --universe pit audit --output reports\audit_pit
+.\\.venv\\Scripts\\python.exe scripts\\build_data_manifest.py --check
+```
+
+`0 problems` 才说明后续复现是有意义的。出现 `CHANGED` 就说明数据源已经变了（下载日期、复权
+基准、退市名单都可能不同），**此后的数字不能与仓库里的结论直接对照**。
+
 ## 3. 非零退出但属正常
 
 | 命令 | 退出码 | 为什么正常 | 真正的判断标准 |
