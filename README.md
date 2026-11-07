@@ -197,6 +197,11 @@ CLI 输出会打印 `research window ...` 以便核对。
 交易日，每期换掉 37–48% 的名字（留存率 0.52–0.63），持有满一年的片段只占 0–0.8%，三段窗口分别只碰过 86/65/57 只股票；
 96% 的成交额来自名字进出而非留存名字的再平衡。所以「低波核心」的执行现实是**月度轮动**，成本与容量都按这个节奏理解。
 
+**把周期拉长呢？**（`reports/cadence_blend/`，§23.91）在混合口径下把调仓间隔从 20 日拉到 60 日，
+三段 Sharpe 均值从 0.881 到 0.891（12 个配对格**全部含 0**），但年换手从 11.5x 降到 5.7x（−51%）。
+所以它**不是收益杠杆，是成本工程选择**：published 成本下打平，成本更重时 60 日占优，
+成本为零时 20 日占优。代价是 2019–2021 那段明显更差（−0.434，P=6%）。
+
 ## 组合与风控
 
 - 等权买入选定名单，`build_portfolio` 依次应用：**可选的**基准趋势开关、
@@ -295,7 +300,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_publish_check.py（发布配置自检：可复现/指纹/因果）, run_power_recheck.py（按可复现 Sharpe 重算检出力）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_publish_check.py（发布配置自检：可复现/指纹/因果）, run_power_recheck.py（按可复现 Sharpe 重算检出力）, run_cadence_blend.py（混合口径下的调仓周期）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -346,7 +351,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **336 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **340 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
