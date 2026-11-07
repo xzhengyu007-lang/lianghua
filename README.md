@@ -265,7 +265,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -770,7 +770,10 @@ PIT 池样本外为 +147.2% / Sharpe 1.27。但这些窗口彼此重叠，且完
 
 **低波是否只是流动性/规模代理**：不是。20 日横截面上，低波与 Amihud 非流动性
 的秩相关仅 +0.020，互相正交后仍有独立 IC（低波 +0.0180、Amihud +0.0189）；
-但规模才是低波的近亲（剔除规模后低波 20 日 IC 只剩 0.0036）。组合层面把
+但规模才是低波的近亲（剔除规模后低波 20 日 IC 只剩 0.0036）。**不过 §23.77 的成分分解
+改写了这半条的读法**：Amihud 全池 IC +0.0664（t=11.3）在两个成员口径内部**都是负的**
+（仍在册 -0.0109、t=-2.63；最终退市 -0.0050），它测的是“退市群 vs 在册群”的组间对比，
+不是一个池内信号——偏 IC 只是把同一条组间通道投影到低波之外。组合层面把
 30% 权重给流动性反而变差：6/2 +93.69%（纯低波 +126.47%），8/2 正收益窗口
 从 10/11 降到 6/11。因子有信息 ≠ 组合能变现。产物见 `reports/liquidity_factor/`，
 详见 §23.10。
