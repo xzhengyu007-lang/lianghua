@@ -23,14 +23,24 @@ def _load_module():
 fingerprints = _load_module()
 
 
-def test_targets_cover_the_five_upstream_studies():
-    assert set(fingerprints.TARGETS) == {
-        "factor_cohorts",
-        "breadth_ic",
-        "pnl_cohorts",
-        "selection_slack",
-        "phase_recheck",
-    }
+def _critical():
+    spec = importlib.util.spec_from_file_location(
+        "audit_staleness", ROOT / "scripts" / "audit_staleness.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return set(module.CRITICAL)
+
+
+def test_targets_cover_the_whole_critical_set():
+    """Derived, not hand-listed: a hand-kept subset drifts away from the real set."""
+    assert set(fingerprints.TARGETS) == _critical()
+
+
+def test_every_covered_report_has_files_hashed():
+    current = fingerprints.scan()
+    empty = [name for name, files in current.items() if not files]
+    assert empty == [], empty
 
 
 def test_compare_flags_a_changed_digest():

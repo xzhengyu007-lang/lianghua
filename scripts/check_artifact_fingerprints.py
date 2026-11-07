@@ -31,14 +31,35 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORTS = ROOT / "reports"
 BASELINE = ROOT / "data" / "artifact_fingerprints.json"
 
-# The upstream studies: everything downstream reads these numbers.
-TARGETS = {
-    "factor_cohorts": ("summary.json", "ic_by_cohort.csv"),
-    "breadth_ic": ("summary.json", "ic_by_horizon.csv"),
-    "pnl_cohorts": ("summary.json", "summary.csv"),
-    "selection_slack": ("summary.json", "yearly.csv"),
-    "phase_recheck": ("spread.csv", "phases.csv"),
-}
+# Every report the decision page rests on -- the same set audit_staleness watches.
+# File lists are derived at scan time so a report that gains a CSV does not need
+# this table edited.
+def _critical_reports() -> tuple:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "audit_staleness", ROOT / "scripts" / "audit_staleness.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return tuple(module.CRITICAL)
+
+
+MAX_FILE_BYTES = 4_000_000
+
+
+def _files_for(report: str) -> tuple:
+    directory = REPORTS / report
+    if not directory.is_dir():
+        return ()
+    picked = [
+        p.name for p in sorted(directory.iterdir())
+        if p.is_file() and p.suffix in (".json", ".csv") and p.stat().st_size <= MAX_FILE_BYTES
+    ]
+    return tuple(picked)
+
+
+TARGETS = {name: () for name in _critical_reports()}
 
 
 def digest(path: Path) -> str:
@@ -51,9 +72,10 @@ def digest(path: Path) -> str:
 
 def scan() -> dict:
     out = {}
-    for report, files in TARGETS.items():
+    for report in TARGETS:
         entry = {}
-        for name in files:
+        for name in TARGETS[report] or _files_for(report):
+            
             path = REPORTS / report / name
             entry[name] = digest(path) if path.exists() else None
         out[report] = entry

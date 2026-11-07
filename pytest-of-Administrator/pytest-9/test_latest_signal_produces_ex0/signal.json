@@ -1,0 +1,62 @@
+{
+  "as_of": "2024-07-12",
+  "execution": "next trading day open",
+  "strategy": "low_vol_core",
+  "params": {
+    "top_n": 3,
+    "vol_window": 30,
+    "trend_window": 60,
+    "rebalance_days": 10
+  },
+  "regime_on": null,
+  "regime_applied": false,
+  "gross_exposure": 0.75,
+  "sizing_equity": 500000.0,
+  "lot_size": 100,
+  "planned_notional": 374146.57,
+  "warnings": [],
+  "orders": [
+    {
+      "symbol": "sh600000",
+      "sector": "金融",
+      "weight": 0.25,
+      "price": 7.3056,
+      "shares": 17100,
+      "amount": 124925.17,
+      "score": 0.093,
+      "flags": ""
+    },
+    {
+      "symbol": "sh600001",
+      "sector": "其他",
+      "weight": 0.25,
+      "price": 9.7255,
+      "shares": 12800,
+      "amount": 124486.73,
+      "score": 0.5075,
+      "flags": ""
+    },
+    {
+      "symbol": "sh600002",
+      "sector": "其他",
+      "weight": 0.25,
+      "price": 13.2696,
+      "shares": 9400,
+      "amount": 124734.67,
+      "score": 1.0481,
+      "flags": ""
+    }
+  ],
+  "watchlist": [
+    {
+      "symbol": "sh600004",
+      "sector": "其他",
+      "score": 0.8046
+    },
+    {
+      "symbol": "sh600005",
+      "sector": "其他",
+      "score": -0.9567
+    }
+  ]
+}

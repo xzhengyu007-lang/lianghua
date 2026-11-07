@@ -1,25 +1,91 @@
 {
-  "updated": "2026-11-08 05:18",
+  "updated": "2026-11-08 06:40",
   "hashes": {
-    "factor_cohorts": {
-      "summary.json": "f277f031a530588f3c951104b392022502ef4b00d6186fcd6b2e9b1db8bbd1fe",
-      "ic_by_cohort.csv": "d66aad52370a6bbbf786bcad1ec9a33b9fefafe1b4989eeaae39fb761638cde4"
+    "random_control": {
+      "draws.csv": "0d50fdab5b6bdd83de6a1fec447877613be1340592559614d2abcd4f103a7a40",
+      "summary.json": "5611d56d8fa846a4592bcbc9a853735230176d990a16302f0e51be70be20f53f"
     },
-    "breadth_ic": {
-      "summary.json": "a0d3d23538ea6706ceb4b676cbf269c5bc0e6b62a26d6349fc058af8ce744464",
-      "ic_by_horizon.csv": "b57d46691c513a148a38d03a0b577150e077378c15508088887d7d58909fbd6c"
+    "naive_benchmark": {
+      "paired.csv": "28b9402c15e0c0bfbc2215a0c42f8a52d3ea99a4b729d8e6d888cf9007fd42f8",
+      "panel.csv": "6bbba50b3ac411c04c0d420aa4ae41aed7b251aa541bee4b12007862ac67b94a",
+      "summary.json": "3dd20c2dfe3c15e5db2fe9b223c23aff0c2aa697c7f76f916f898d5b3c533365"
     },
-    "pnl_cohorts": {
-      "summary.json": "fd1a3725bba70342d892df74f68aba50f017bcc2a6b488b10686b46d86dfcded",
-      "summary.csv": "7801e0e4b4769d66c693524692251ce124198e1fbb611e32e1212dda489d8350"
+    "filter_blend_ablation": {
+      "paired.csv": "7942e0610f9ff015443e8c99f301fcfb9df4a56563b90443c557f4d4a947c4c5",
+      "panel.csv": "a1c5d002f8d91a7c22bc846f510f8c49b9597cd59207ed66a950d305ad5ed7ef",
+      "summary.json": "f4fd2562351ccbd223378fa2543944164b8b2e7589c2afdfa9c2c919e8d08621"
+    },
+    "rank_overlap": {
+      "rebalances.csv": "f76b7430f2a588cee8387232052a0b945a97c59b68c7f762f57685135f80bf8d",
+      "summary.json": "ac10b60853c55458430b32b806ff93ef59275a0126a03ba57cc6f253012ad2da",
+      "yearly.csv": "18309d220e0bd50234834508fcb6acc0d1ea5fbb32553ccf9c0d45824365c808"
+    },
+    "quarter_consistency": {
+      "quarters.csv": "128232e72d0acedc6935dbc49744e7f669bbd02e27c33ebcb2e18963b403ce3c",
+      "summary.json": "218c4f6649ef8f6c30d6fe74ee32e57eaf54e9f951a45bce60025b7702759ab8"
+    },
+    "execution_timing": {
+      "paired.csv": "b81fc3165c6a322d89106b4dbc99044ff7b56ae3aa847e74a33e12c0db8aecca",
+      "panel.csv": "d92583245d68b51360c0619e022fdac7bf371e619b4589bbc6d3791994a91543",
+      "summary.json": "d64018def7328a88d37559ffbd489ec9806a9042340fa7d8725c7232d66d14c3"
+    },
+    "year_table_blend": {
+      "daily_returns.csv": "1d0108274b6732eecbb5d47891e2379497cfe9e8fe4fb7f354f68116281dff9f",
+      "summary.json": "7704fd82baac6ea9fd17cfd48520ef61aa7f85ce46bbbf750541bfb8340960c0",
+      "year_stats.csv": "379798527fe7ad5157c2d741c9d9d7fb8612d618228f3f636d54dd32c86cc4a3",
+      "years.csv": "388f2a2bdcbb0e025db1de0d451025c56861f31d03d742b0c4482fedcdaa6815"
+    },
+    "voltarget_blend": {
+      "paired.csv": "6920a883388b94a0f46b239b4782c2a3fe280ae41a5e2c69321b72305d03a939",
+      "panel.csv": "2b5fdffe4d9a65b19d7f6610b57901aeae7090b843d82afa9446beeee3cef869",
+      "summary.json": "5e3c144a4eb7890d86250bf371f2c2f319b1cb70ce9947015bfaa9ee62aa3eb1"
+    },
+    "phase_recheck": {
+      "phases.csv": "5d494e1a17e40b13bcf09f285be6161266e5c93f33cf02c26e9c6ac4998d0e81",
+      "spread.csv": "f83030f3de7d035263ffd781136cff666a513f82e2de96866d6a8aec2b2748fc",
+      "summary.json": "49ccb33d87650777dfa0d6b979dc28e5f5d66826841aa914061bdcd665694d3c"
+    },
+    "phase_blend": {
+      "blend_vs_phases.csv": "49a042c849d8acbcf28b5efab92c8c4daf7632b84218928cfe11fad992a08f21",
+      "comparison.csv": "63083a2769c302186ce697ab5991f1edcbfa375b33ca70ec1cf67c4144bc993b",
+      "summary.json": "0ce1400ec7adecfcab6187a8d5456efb1e9662d889ad780598f64d59ca4ad136"
+    },
+    "power_recheck": {
+      "power.csv": "634e4192ef5b3a996e5c5735e0f6c6be056f5ae78de615c4c6811996f3e3b098",
+      "summary.json": "561959a2d4f8767ab9213f5a85d84e639e4fbf7d52fc4b69c7e1259729ad313e"
+    },
+    "capacity_blend": {
+      "capacity.csv": "15c452416044f898c2c1aecf431817eeb7eb6cf925db3b1d06fe10cb042217e1",
+      "summary.json": "685079c07d142a8707f336584c6f182382d00ccd6891384ac0a76a4e882f0e8e"
+    },
+    "cadence_blend": {
+      "paired.csv": "4898a702c906adfabd0344eac0710c30529b3dbf17d6d282559ab1b8f9c3e25e",
+      "panel.csv": "f2b1896e82cd683c11885c38d62d7cb074c1656043a63bb22eb3ae9879280c6a",
+      "summary.json": "5036b25d233fa3372de1f78e49096c4b5b8b172e7519149a5a8ae8eddc1bb6d2"
+    },
+    "cross_pool_random": {
+      "draws.csv": "0329519553f76b0ba3a37d6f0ce9aaceff1cce2c785cfe11fdefafbcd95fb104",
+      "summary.csv": "d46198dd06f21b62b46d28b6c0c0284666c399499c612daf5f8fe2f99f3146d6",
+      "summary.json": "fbe10a347ebfdd56d2bdea8169d3466bd350961a0b20fd407d3f792f075047e8"
     },
     "selection_slack": {
+      "rebalances.csv": "7b0310ba73e01e808610fe51c9a05c26cabe32fb5b971ccb90fd0adbe9b3e9b5",
       "summary.json": "247a39837c85851fd0471ff230fc8db3f08a13f9839b83149ca5adf76c51773b",
       "yearly.csv": "c5914e2d8ff819a0d04c2186ca760312b8492768c09596daf18fbf623c5fa5c3"
     },
-    "phase_recheck": {
-      "spread.csv": "f83030f3de7d035263ffd781136cff666a513f82e2de96866d6a8aec2b2748fc",
-      "phases.csv": "5d494e1a17e40b13bcf09f285be6161266e5c93f33cf02c26e9c6ac4998d0e81"
+    "breadth_ic": {
+      "ic_by_horizon.csv": "b57d46691c513a148a38d03a0b577150e077378c15508088887d7d58909fbd6c",
+      "ic_by_year.csv": "f323d8116d4a0ad81cd7e10ac8df7c9699c839eda12ed3e7de31521a386b010f",
+      "panel.csv": "773f2107b68380c51a17ed5b40ff3d3641ed58ece2a61cd024159408b726a345",
+      "summary.json": "a0d3d23538ea6706ceb4b676cbf269c5bc0e6b62a26d6349fc058af8ce744464"
+    },
+    "factor_cohorts": {
+      "ic_by_cohort.csv": "d66aad52370a6bbbf786bcad1ec9a33b9fefafe1b4989eeaae39fb761638cde4",
+      "summary.json": "f277f031a530588f3c951104b392022502ef4b00d6186fcd6b2e9b1db8bbd1fe"
+    },
+    "pnl_cohorts": {
+      "summary.csv": "7801e0e4b4769d66c693524692251ce124198e1fbb611e32e1212dda489d8350",
+      "summary.json": "fd1a3725bba70342d892df74f68aba50f017bcc2a6b488b10686b46d86dfcded"
     }
   }
 }
