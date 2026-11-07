@@ -30,7 +30,7 @@ def test_defaults_match_the_published_cli_defaults():
 
 def test_clean_clamps_out_of_range_knobs():
     _, applied = server._clean({"top_n": 999, "vol_window": 1, "target_vol": 9.0})
-    assert applied["top_n"] == 40
+    assert applied["top_n"] == 30
     assert applied["vol_window"] == 5
     assert applied["target_vol"] == 0.60
 

@@ -204,6 +204,7 @@
       <div class="pane">
         <div class="ph">策略参数</div>
         <div class="pb" style="max-height:none">
+          <div class="ctl" style="border-bottom:1px solid var(--border);margin-bottom:6px"><label>策略</label><select id="lab-strategy"></select></div>
           <div id="lab-controls"></div>
           <div style="display:flex;gap:8px;padding:12px 9px">
             <button class="primary" id="lab-run">跑一次</button>
@@ -486,13 +487,7 @@ $('#q-log').oninput = renderLogNav;
 
 
 /* ---------- lab (needs the local server) ---------- */
-var LAB = { meta: null, last: null };
-var LAB_FIELDS = [
-  ['top_n','持仓只数'],['vol_window','波动窗口'],['trend_window','趋势窗口'],
-  ['max_per_sector','每行业上限'],['rebalance_days','调仓间隔'],
-  ['vol_weight','低波权重'],['trend_weight','趋势权重'],['target_vol','目标波动'],
-  ['slippage_bps','滑点 (bp)'],['rebalance_reset','调仓锚点']
-];
+var LAB = { meta: null, last: null, strategy: 'low_vol_core' };
 
 function baselineReport(){
   for (var i=0;i<DATA.reports.length;i++) if (DATA.reports[i].name==='pit_full267_year') return DATA.reports[i];
@@ -502,7 +497,9 @@ function baselineReport(){
 function labInit(){
   fetch('/api/meta').then(function(r){ return r.json(); }).then(function(meta){
     LAB.meta = meta;
-    renderLabControls(meta.defaults);
+    LAB.strategy = meta.default_strategy || 'low_vol_core';
+    renderStrategySelect();
+    renderLabControls();
     var w = meta.window;
     $('#lab-status').innerHTML = '数据窗口 ' + w.start + ' .. ' + w.end + ' · ' + w.symbols +
       ' 只 · ' + w.days + ' 个交易日 · 面板已加载（' + w.load_seconds + 's）';
@@ -513,30 +510,50 @@ function labInit(){
   });
 }
 
-function renderLabControls(defaults){
-  $('#lab-controls').innerHTML = LAB_FIELDS.map(function(f){
-    var k=f[0], label=f[1];
-    if(k==='rebalance_reset'){
-      return '<div class="ctl"><label>'+label+'</label><select data-k="'+k+'">'+
-        '<option value="year">year</option><option value="start">start</option></select></div>';
-    }
-    return '<div class="ctl"><label>'+label+'</label><input type="number" step="any" data-k="'+k+'" value="'+defaults[k]+'"></div>';
+function renderStrategySelect(){
+  var sel = $('#lab-strategy');
+  if(!sel || !LAB.meta) return;
+  sel.innerHTML = Object.keys(LAB.meta.strategies).map(function(n){
+    return '<option value="'+n+'"'+(n===LAB.strategy?' selected':'')+'>'+n+'</option>';
   }).join('');
-  applyDefaults();
-  $('#lab-run').onclick = runLab;
-  $('#lab-reset').onclick = function(){ applyDefaults(); };
+  sel.onchange = function(){ LAB.strategy = sel.value; renderLabControls(); };
 }
 
-function applyDefaults(){
+function labControl(f, value){
+  if(f.kind==='choice'){
+    return '<select data-k="'+f.key+'">'+f.low.map(function(v){
+      return '<option value="'+v+'"'+(String(value)===v?' selected':'')+'>'+v+'</option>';
+    }).join('')+'</select>';
+  }
+  if(f.kind==='bool'){
+    return '<input type="checkbox" data-k="'+f.key+'"'+(value?' checked':'')+'>';
+  }
+  var step = f.kind==='int' ? '1' : '0.01';
+  return '<input type="number" step="'+step+'" min="'+f.low+'" max="'+f.high+'" data-k="'+f.key+'" value="'+value+'">';
+}
+
+function renderLabControls(){
   if(!LAB.meta) return;
-  var d = LAB.meta.defaults;
-  document.querySelectorAll('#lab-controls [data-k]').forEach(function(el){ el.value = d[el.dataset.k]; });
+  var spec = LAB.meta.strategies[LAB.strategy] || [];
+  var defaults = LAB.meta.defaults[LAB.strategy] || {};
+  var html = spec.map(function(f){
+    return '<div class="ctl"><label>'+f.key+'</label>'+labControl(f, defaults[f.key])+'</div>';
+  }).join('');
+  html += '<div style="border-top:1px solid var(--border);margin:8px 6px 4px"></div>';
+  html += LAB.meta.cost_params.map(function(f){
+    return '<div class="ctl"><label>'+f.key+'</label>'+labControl(f, LAB.meta.cost_defaults[f.key])+'</div>';
+  }).join('');
+  $('#lab-controls').innerHTML = html;
+  $('#lab-run').onclick = runLab;
+  $('#lab-reset').onclick = function(){ renderLabControls(); };
 }
 
 function labParams(){
   var out = {};
-  document.querySelectorAll('#lab-controls [data-k]').forEach(function(el){ out[el.dataset.k] = el.value; });
-  return out;
+  document.querySelectorAll('#lab-controls [data-k]').forEach(function(el){
+    out[el.dataset.k] = (el.type === 'checkbox') ? el.checked : el.value;
+  });
+  return { strategy: LAB.strategy, params: out };
 }
 
 function runLab(){

@@ -232,7 +232,10 @@ start reports\dashboard\index.html
 .\.venv\Scripts\python.exe scripts\serve_dashboard.py      # http://127.0.0.1:8765
 ```
 
-多出来的「实验室」页可以改持仓只数、波动 / 趋势窗口、行业上限、调仓间隔、目标波动、
+多出来的「实验室」页可以在 **9 个策略**之间切换（`low_vol_core`、`low_volatility`、
+`sector_neutral_lowvol`、`multi_factor`、`momentum`、`breakout`、`mean_reversion`、
+`low_vol_plus`、`low_vol_illiquid`），参数表**由每个策略的 dataclass 字段自动生成**，
+数值带上下界、枚举走下拉、布尔走勾选，切换策略即重建。也可以改持仓只数、波动 / 趋势窗口、行业上限、调仓间隔、目标波动、
 滑点与调仓锚点，点一次跑一次**真实回测**：面板只加载一次（约 1.2 s），之后每次约 1.7 s。
 结果与归档基线 `pit_full267_year` 同图对比，并给出收益 / 波动 / 回撤 / Sharpe 四项差值。
 

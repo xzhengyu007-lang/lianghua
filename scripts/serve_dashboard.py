@@ -37,27 +37,89 @@ import build_dashboard as dashboard  # noqa: E402
 
 BASE_DATE = date(2019, 1, 1)
 
-INT_PARAMS = {
-    "top_n": (1, 40, 8),
-    "vol_window": (5, 250, 60),
-    "trend_window": (20, 250, 120),
-    "max_per_sector": (0, 20, 2),
-    "rebalance_days": (5, 120, 20),
-}
-FLOAT_PARAMS = {
-    "vol_weight": (0.0, 1.0, 0.8),
-    "trend_weight": (0.0, 1.0, 0.2),
+# Backtest-level knobs: not strategy fields, but they change the answer.
+COST_SPEC = {
     "target_vol": (0.05, 0.60, 0.18),
     # 5.0 is the CLI default; passing 0 here silently beat the published baseline.
     "slippage_bps": (0.0, 50.0, 5.0),
 }
-CHOICE_PARAMS = {"rebalance_reset": (("year", "start"), "year")}
 
-DEFAULT_RUN = {
-    **{k: v[2] for k, v in INT_PARAMS.items()},
-    **{k: v[2] for k, v in FLOAT_PARAMS.items()},
-    **{k: v[1] for k, v in CHOICE_PARAMS.items()},
+# Explicit bounds for the fields where a heuristic would be silly.
+RANGES = {
+    "top_n": (1, 30),
+    "max_per_sector": (0, 20),
+    "rebalance_days": (5, 120),
+    "rebalance_offset": (0, 19),
+    "buffer_rank": (1.0, 3.0),
+    "vol_window": (5, 250),
+    "trend_window": (20, 250),
+    "illiquidity_window": (5, 120),
+    "momentum_window": (20, 300),
+    "momentum_skip": (0, 60),
+    "calm_fraction": (0.0, 1.0),
+    "fallback_penalty": (0.0, 20.0),
+    "per_sector": (1, 10),
+    "lookback": (10, 250),
+    "skip": (0, 40),
+    "entry_window": (10, 150),
+    "exit_window": (5, 120),
+    "rsi_window": (3, 40),
+    "entry_rsi": (10, 50),
+    "exit_rsi": (40, 90),
 }
+CHOICES = {
+    "rebalance_reset": ("start", "year"),
+    "rebalance_on": ("interval", "monthly"),
+    "blend": ("zscore", "rank"),
+}
+# The published baseline re-anchors the cadence every January (RESEARCH_LOG 23.23),
+# so the lab must default to "year" even though the dataclass defaults to "start".
+DEFAULT_RESET = "year"
+
+
+def strategy_spec(name: str) -> dict:
+    """Knobs the UI may set for one strategy: {field: (kind, low, high, default)}."""
+    import dataclasses
+
+    from quant_system.strategies import STRATEGY_REGISTRY
+
+    cls = STRATEGY_REGISTRY[name]
+    spec: dict = {}
+    for field in dataclasses.fields(cls):
+        if field.name in ("name", "weights"):
+            continue
+        default = None if field.default is dataclasses.MISSING else field.default
+        kind = field.type if isinstance(field.type, str) else str(field.type)
+        if field.name in CHOICES:
+            spec[field.name] = ("choice", list(CHOICES[field.name]), None, default)
+        elif kind.startswith("bool"):
+            spec[field.name] = ("bool", None, None, bool(default))
+        elif kind.startswith("int"):
+            low, high = RANGES.get(field.name, (0, max(int(default or 0) * 4, 60)))
+            spec[field.name] = ("int", low, high, default)
+        elif kind.startswith("float"):
+            low, high = RANGES.get(field.name, (0.0, 1.0 if (default or 0) <= 1.0 else 10.0))
+            spec[field.name] = ("float", low, high, default)
+    if "rebalance_reset" in spec:
+        # One source of truth for the calendar anchor: the dataclass says
+        # "start", but the published baseline re-anchors yearly (23.23), and a
+        # garbage value must not silently switch the lab to a different calendar.
+        spec["rebalance_reset"] = (
+            spec["rebalance_reset"][0],
+            spec["rebalance_reset"][1],
+            spec["rebalance_reset"][2],
+            DEFAULT_RESET,
+        )
+    return spec
+
+
+def default_params(name: str) -> dict:
+    params = {k: v[3] for k, v in strategy_spec(name).items()}
+    params["rebalance_reset"] = DEFAULT_RESET
+    return params
+
+
+DEFAULT_RUN = {**default_params("low_vol_core"), **{k: v[2] for k, v in COST_SPEC.items()}}
 
 
 class Engine:
@@ -105,22 +167,28 @@ class Engine:
 
     def run(self, raw: dict) -> dict:
         self._load()
-        _, applied = _clean(raw)
-
         from quant_system.backtest import Backtester, BacktestConfig
         from quant_system.config import CostConfig
         from quant_system.portfolio import build_portfolio
         from quant_system.risk import RiskConfig
-        from quant_system.strategies import build_strategy
+        from quant_system.strategies import STRATEGY_REGISTRY, build_strategy
 
-        target_vol = applied.pop("target_vol")
-        slippage = applied.pop("slippage_bps")
+        name = raw.get("strategy") if isinstance(raw, dict) else None
+        if name not in STRATEGY_REGISTRY:
+            name = "low_vol_core"
+        payload = raw.get("params") if isinstance(raw.get("params"), dict) else raw
+        if not isinstance(payload, dict):
+            payload = {}
+        applied = _coerce(payload, strategy_spec(name))
+        costs = _coerce(payload, cost_spec())
+        target_vol = costs["target_vol"]
+        slippage = costs["slippage_bps"]
         strategy_params = dict(applied)
         if strategy_params.get("max_per_sector") == 0:
             strategy_params["max_per_sector"] = None
 
         started = time.time()
-        strategy = build_strategy("low_vol_core", **strategy_params)
+        strategy = build_strategy(name, **strategy_params)
         raw_signals = strategy.generate(self._aligned)
         weights = build_portfolio(
             raw_signals,
@@ -151,6 +219,7 @@ class Engine:
         points = [[int(offsets[i]), round(float(pct.iloc[i]), 3)] for i in keep]
 
         return {
+            "strategy": name,
             "params": applied,
             "metrics": metrics,
             "eq": points,
@@ -160,31 +229,62 @@ class Engine:
         }
 
 
-def _clean(raw: dict) -> tuple[dict, dict]:
-    """Coerce and clamp the incoming knobs; never trust the client."""
+def _coerce(raw: dict, spec: dict) -> dict:
+    """Coerce and clamp one spec; never trust the client."""
     applied: dict = {}
-    for name, (low, high, default) in INT_PARAMS.items():
+    for name, (kind, low, high, default) in spec.items():
         value = raw.get(name, default)
-        try:
-            number = int(round(float(value)))
-        except (TypeError, ValueError):
-            number = default
-        applied[name] = max(low, min(high, number))
-    for name, (low, high, default) in FLOAT_PARAMS.items():
-        value = raw.get(name, default)
-        try:
-            number = float(value)
-        except (TypeError, ValueError):
-            number = default
-        applied[name] = max(low, min(high, number))
-    for name, (choices, default) in CHOICE_PARAMS.items():
-        value = str(raw.get(name, default))
-        applied[name] = value if value in choices else default
+        if kind == "choice":
+            text = str(value)
+            applied[name] = text if text in low else default
+        elif kind == "bool":
+            if isinstance(value, bool):
+                applied[name] = value
+            elif isinstance(value, str):
+                applied[name] = value.strip().lower() in ("1", "true", "yes", "on")
+            else:
+                applied[name] = bool(value)
+        elif kind == "int":
+            try:
+                number = int(round(float(value)))
+            except (TypeError, ValueError):
+                number = int(default)
+            applied[name] = max(low, min(high, number))
+        else:
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                number = float(default)
+            applied[name] = max(low, min(high, number))
+    return applied
+
+
+def cost_spec() -> dict:
+    return {k: ("float", v[0], v[1], v[2]) for k, v in COST_SPEC.items()}
+
+
+def _clean(raw: dict) -> tuple[dict, dict]:
+    """Default entry point: low_vol_core knobs plus the cost knobs."""
+    applied = _coerce(raw, strategy_spec("low_vol_core"))
+    applied.update(_coerce(raw, cost_spec()))
     return raw, applied
+
+
+def _spec_payload_from(spec: dict) -> list:
+    out = []
+    for key, (kind, low, high, default) in spec.items():
+        out.append({"key": key, "kind": kind, "low": low, "high": high, "default": default})
+    return out
+
+
+def _spec_payload(name: str) -> list:
+    return _spec_payload_from(strategy_spec(name))
 
 
 ENGINE: Engine | None = None
 LOCK = threading.Lock()
+
+from quant_system.strategies import STRATEGY_REGISTRY  # noqa: E402
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -221,13 +321,19 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(
                     {
                         "window": ENGINE.window,
-                        "defaults": DEFAULT_RUN,
+                        "default_strategy": "low_vol_core",
+                        "strategies": {
+                            name: _spec_payload(name) for name in sorted(STRATEGY_REGISTRY)
+                        },
+                        "defaults": {
+                            name: default_params(name) for name in sorted(STRATEGY_REGISTRY)
+                        },
+                        "cost_params": _spec_payload_from(cost_spec()),
+                        "cost_defaults": {k: v[2] for k, v in COST_SPEC.items()},
                         "baseline": {
                             "name": "pit_full267_year",
-                            "note": "默认参数（top_n=8 / vol60 / trend120 / 每行业 2 只 / 20 日 / reset=year）在仓里的归档值",
+                            "note": "low_vol_core 默认参数（top_n=8 / vol60 / trend120 / 每行业 2 只 / 20 日 / reset=year）在仓里的归档值",
                         },
-                        "int_params": {k: {"min": v[0], "max": v[1]} for k, v in INT_PARAMS.items()},
-                        "float_params": {k: {"min": v[0], "max": v[1]} for k, v in FLOAT_PARAMS.items()},
                     }
                 )
                 return
