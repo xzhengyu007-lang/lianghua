@@ -1,2 +1,0 @@
-date,symbol,side,shares,price,notional,reason,commission,stamp_duty,transfer_fee,slippage,fees,realized_pnl
-2024-01-02,sh600145,sell,100,10.0,1000.0,rebalance,0.0,0.0,0.0,0.0,0.0,-50.0

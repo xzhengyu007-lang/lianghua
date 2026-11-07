@@ -43,6 +43,8 @@ CRITICAL = (
     # on an artifact nobody is watching.
     "random_control",
     "naive_benchmark",
+    "filter_blend_ablation",
+    "rank_overlap",  # cited in the memo's parts ledger prose (t = 0.81)
     "quarter_consistency",
     "execution_timing",
     "year_table_blend",

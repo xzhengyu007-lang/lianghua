@@ -61,6 +61,15 @@ def test_memo_opens_with_the_three_things_that_matter():
     assert "「有效」不等于「已被证明」" in text
 
 
+def test_memo_carries_the_parts_ledger():
+    """The description must match where the contribution actually comes from."""
+    text = MEMO.read_text(encoding="utf-8")
+    assert "零件账" in text
+    assert "趋势过滤" in text
+    assert "几乎是装饰" in text
+    assert "§23.110" in text and "§23.111" in text
+
+
 def test_memo_does_not_overclaim_against_the_obvious_alternative():
     """23.102's random-control win must sit next to the naive-benchmark tie."""
     text = MEMO.read_text(encoding="utf-8")

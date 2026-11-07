@@ -49,6 +49,8 @@ PLAN = [
     ("quarter_consistency", "run_quarter_consistency.py", []),
     ("random_control", "run_random_control.py", []),
     ("naive_benchmark", "run_naive_benchmark.py", []),
+    ("filter_blend_ablation", "run_filter_blend_ablation.py", []),
+    ("rank_overlap", "run_rank_overlap.py", []),
 ]
 
 POST = [

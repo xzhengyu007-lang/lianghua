@@ -164,6 +164,23 @@ def collect() -> dict:
         payload["naive_benchmark"]["turnover_ratio"] = float(
             (pivot[real_col] / pivot[naive_col]).median()
         )
+        by_pool = naive_panel.pivot_table(index="window", columns="variant", values="sharpe")
+        listed_col = next(c for c in by_pool.columns if c.startswith("A"))
+        pit_col = next(c for c in by_pool.columns if c.startswith("B"))
+        payload["naive_benchmark"]["pool_effect"] = {
+            str(k): float(v) for k, v in (by_pool[pit_col] - by_pool[listed_col]).items()
+        }
+
+    ablation = _csv(REPORTS / "filter_blend_ablation" / "panel.csv")
+    if ablation is not None:
+        pivot = ablation.pivot_table(index="window", columns="variant", values="sharpe")
+        published = next(c for c in pivot.columns if c.startswith("过滤+混合"))
+        only_filter = next(c for c in pivot.columns if c.startswith("只过滤"))
+        only_blend = next(c for c in pivot.columns if c.startswith("只混合"))
+        payload["parts"] = {
+            "filter": {str(k): float(v) for k, v in (pivot[published] - pivot[only_blend]).items()},
+            "blend": {str(k): float(v) for k, v in (pivot[published] - pivot[only_filter]).items()},
+        }
 
     check = _json(REPORTS / "publish_check" / "summary.json")
     if check:
@@ -181,8 +198,9 @@ def render(payload: dict) -> str:
 
     lines.append("## 如果你只记得三件事")
     lines.append("")
-    lines.append("1. **它是什么**：大盘低波 + 月度轮动。中位持有一只股票 %d 个交易日，不是「买入并持有低波龙头」"
-                 "（§23.74/§23.91）。"
+    lines.append("1. **它是什么**：在最平静的 8 只里剔除跌破趋势的那些，月度轮动。中位持有一只股票 %d 个"
+                 "交易日，不是「买入并持有低波龙头」（§23.74/§23.91）。**名字里的「低波打分」几乎是装饰**——"
+                 "真正干活的是趋势过滤（见下面零件账）。"
                  % (round(payload["turnover"]["median_holding_days"]) if "turnover" in payload else 0))
     full = payload.get("full_period", {}).get("deployable")
     median_sharpe = payload.get("phase_spread", {}).get("median_sharpe")
@@ -206,6 +224,29 @@ def render(payload: dict) -> str:
     lines.append("| 调仓 | 每 %d 个交易日，按自然年重置锚点 |" % cfg["rebalance_days"])
     lines.append("| 风险 | 目标年化波动 %.0f%% |" % (cfg["target_vol"] * 100))
     lines.append("")
+    if "parts" in payload:
+        windows = ["2019-2021", "2022-2023", "2024-2026"]
+        lines.append("**零件账**——这层一层层拆下来，只有一个零件在干活（三段 Sharpe 增量，§23.110）：")
+        lines.append("")
+        lines.append("| 零件 | " + " | ".join(windows) + " | 结论 |")
+        lines.append("|---|" + "---:|" * len(windows) + "---|")
+        parts = payload["parts"]
+        lines.append("| **趋势过滤** | " + " | ".join("%+.2f" % parts["filter"][w] for w in windows)
+                     + " | 主要贡献者，防的是下跌行情里抱着最平静的名字一起跌 |")
+        def fmt(value: float) -> str:
+            text = "%+.2f" % value
+            return "+0.00" if text in ("-0.00", "+0.00") else text
+
+        lines.append("| 0.8/0.2 打分混合 | " + " | ".join(fmt(parts["blend"][w]) for w in windows)
+                     + " | 平均为零；它确实会换掉约 1.1 只，但换掉的那只没有信息（§23.111，t=0.81） |")
+        pool = payload.get("naive_benchmark", {}).get("pool_effect")
+        if pool:
+            lines.append("| PIT 池 vs 在册 128 只 | " + " | ".join(fmt(pool.get(w, 0.0)) for w in windows)
+                         + " | 边际很小，退市群的有无不是主导因素（§23.109） |")
+        lines.append("")
+        lines.append("所以更准确的名字是：**在最平静的 8 只里剔除跌破趋势的那些**，而不是"
+                     "「低波打分 + 趋势确认」——后者会让人以为打分在做主要工作。")
+        lines.append("")
     if "value_attribution" in payload:
         v = payload["value_attribution"]
         lines.append("**这台机器值在哪（这比「值多少」更重要）**：把低波分换成随机分、其余约束全不变时，")
