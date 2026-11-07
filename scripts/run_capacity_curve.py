@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sharpe": float(m.sharpe),
                 "max_drawdown": float(m.max_drawdown),
                 "avg_gross": float(realized.sum(axis=1).mean()),
-                "target_gross": float(wanted[columns].sum(axis=1).mean()),
+                "target_gross": float(wanted.sum(axis=1).mean()),
                 "weight_drift": float(drift.mean()),
                 "max_weight_drift": float(drift.max()),
                 "turnover": float(m.turnover),

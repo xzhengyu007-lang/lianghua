@@ -268,7 +268,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -319,7 +319,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **310 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **313 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
@@ -694,6 +694,17 @@ Sharpe 仍是 **1.075 / 1.032 / 0.922**（累计 +41.0% / +30.5% / +36.2%）。
 每笔成本的分解（`reports/cost_decomposition/`，§23.70）：published 情景单边 10.2bp（买 7.6 / 卖 12.7，差的 5bp 是印花税），impact40 的冲击项只有 0.74bp，harsh 的 28.7bp 里冲击仅 1.06bp——**harsh 压的是固定成本假设，不是冲击模型**。100 万本金这一档冲击可以忽略，放大到 ADV 的 5% 以上要改用 `reports/capacity_v2/` 的曲线。
 
 **容量曲线**（`reports/capacity_curve/`，§23.72）：同一套 18% 配置在 100 万到 20 亿初始资金下跑 2024-01 .. 2026-11，参与上限 20% ADV。成交量上限几乎咬不到——平均总仓位 0.927→0.932、1 亿以内权重漂移稳定在 0.045、Sharpe 从 1.039 只滑到 1.021；真正压低容量的是冲击成本：叠加 40bp 平方根冲击后 Sharpe 从 1.034（100 万）单调滑到 0.844（10 亿）。所以规模决策的变量不是「能装多少钱」，而是「冲击系数估得准不准」，对照见 `reports/capacity_curve_impact40/`。
+
+**要不要按混合口径重算容量**（`reports/capacity_blend/`，§23.84）：要，而且结论更好看。
+混合换手 15.1x（单相位 13.4–13.6x），但执行漂移只有 **0.035**（单相位 0.045–0.058）——
+它持有 20 套篮子的并集、单笔更小，截断更少。40bp 冲击下混合从 100 万到 20 亿只掉 **0.071**
+Sharpe（1.034→0.849 的单相位掉 0.185），规模敏感度只有 38%。所以 §23.72 的“10 亿”上限对
+混合依然成立且更安全；但要记住混合的绝对水平低于 phase 0 是因为 phase 0 是 80 分位相位，
+正确对照是相位中位 0.668——混合在 40bp 下仍有 0.745。
+
+> 重跑时发现 `scripts/run_capacity_curve.py` 曾因一行引用未定义变量而无法运行，
+> 即 §23.72 的表一度**无法复现**。修复后两卷曲线与归档逐格差 0.0，结论未受影响。
+> 已补 `tests/test_scripts_compile.py`（全量编译检查）与 `tests/test_capacity_curve.py`（漂移数学）。
 
 **回撤熔断**（`reports/sensitivity_v2/`）：已实现为因果约束（只用上一日已实现净值），
 归档口径下实测全样本有害：10% 阈值把总收益从 +145.9% 压到 +65.2%，Sharpe 0.649；

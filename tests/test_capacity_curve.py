@@ -1,4 +1,9 @@
-"""Tests for the capacity curve helper (23.72)."""
+"""Tests for the capacity-curve helpers (23.72 / 23.84).
+
+The script itself rotted once: a report field referenced a local variable from
+another function, so the published table could not be reproduced until it was
+fixed. These pin the helper's arithmetic so the executable part stays honest.
+"""
 
 from __future__ import annotations
 
@@ -22,24 +27,27 @@ def _load_module():
 capacity = _load_module()
 
 
-def test_identical_weights_have_zero_drift():
-    idx = pd.bdate_range("2024-01-02", periods=3)
-    weights = pd.DataFrame({"AAA": [0.5, 0.4, 0.3], "BBB": [0.5, 0.6, 0.7]}, index=idx)
-    drift = capacity.weight_drift(weights, weights.copy())
-    assert (drift.abs() < 1e-12).all()
+def test_weight_drift_is_half_the_l1_distance():
+    realized = pd.DataFrame({"a": [0.5], "b": [0.5]})
+    wanted = pd.DataFrame({"a": [0.6], "b": [0.4]})
+    drift = capacity.weight_drift(realized, wanted)
+    assert abs(drift.iloc[0] - 0.1) < 1e-12
 
 
-def test_missing_half_of_a_position_is_counted():
-    idx = pd.bdate_range("2024-01-02", periods=1)
-    realized = pd.DataFrame({"AAA": [0.0]}, index=idx)
-    wanted = pd.DataFrame({"AAA": [0.5]}, index=idx)
-    # L1 = 0.5, so the half-L1 (fraction of the book in the wrong place) is 0.25
-    assert abs(capacity.weight_drift(realized, wanted).iloc[0] - 0.25) < 1e-12
+def test_identical_weights_have_no_drift():
+    frame = pd.DataFrame({"a": [0.5], "b": [0.5]})
+    drift = capacity.weight_drift(frame, frame.copy())
+    assert abs(drift.iloc[0]) < 1e-12
 
 
-def test_unfilled_order_shows_up_as_drift():
-    idx = pd.bdate_range("2024-01-02", periods=1)
-    realized = pd.DataFrame({"AAA": [0.5], "BBB": [0.0]}, index=idx)
-    wanted = pd.DataFrame({"AAA": [0.5], "BBB": [0.5]}, index=idx)
-    # BBB wanted 0.5 but filled 0.0 -> half-L1 = 0.25
-    assert abs(capacity.weight_drift(realized, wanted).iloc[0] - 0.25) < 1e-12
+def test_only_common_names_are_compared():
+    realized = pd.DataFrame({"a": [0.5]})
+    wanted = pd.DataFrame({"a": [0.5], "b": [0.5]})
+    drift = capacity.weight_drift(realized, wanted)
+    assert abs(drift.iloc[0]) < 1e-12
+
+
+def test_cash_levels_are_ascending_and_span_the_curve():
+    levels = capacity.CASH_LEVELS
+    assert list(levels) == sorted(levels)
+    assert levels[0] <= 1e6 and levels[-1] >= 1e9
