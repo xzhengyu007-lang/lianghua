@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 112 |
-| 在研究日志里出现过 | 70 |
-| 有对应测试 | 41 |
+| 脚本总数 | 113 |
+| 在研究日志里出现过 | 71 |
+| 有对应测试 | 42 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -104,6 +104,7 @@
 | `run_execution_timing.py` | run | ✓ | ✓ | How much of the edge survives being late? |
 | `run_factor_cohorts.py` | run | ✓ | ✓ | Decompose every factor's IC into "still listed" versus "eventually delisted". |
 | `run_factor_study.py` | run | ✓ | — | Factor study: does anything survive after low volatility is controlled for? |
+| `run_filter_blend_ablation.py` | run | ✓ | ✓ | Split the edge between the trend filter and the score blend. |
 | `run_final.py` | run | — | — | Archived full-period baseline: report, dashboard and factor diagnostics (superseded, kept for history). |
 | `run_hedge_panel.py` | run | ✓ | — | Beta-hedge panel across the three independent windows. |
 | `run_hedge_study.py` | run | ✓ | — | Does hedging the residual market beta pay, after futures carry? |
