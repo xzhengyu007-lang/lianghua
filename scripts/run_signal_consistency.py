@@ -1,3 +1,4 @@
+"""The live signal and the backtest must size the same basket identically (23.16)."""
 from __future__ import annotations
 
 import sys

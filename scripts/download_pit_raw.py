@@ -1,3 +1,4 @@
+"""Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19)."""
 import sys, json, time
 from pathlib import Path
 sys.path.insert(0, '.')

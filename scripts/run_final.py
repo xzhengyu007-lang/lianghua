@@ -1,3 +1,4 @@
+"""Archived full-period baseline: report, dashboard and factor diagnostics (superseded, kept for history)."""
 import json, sys
 from pathlib import Path
 import pandas as pd

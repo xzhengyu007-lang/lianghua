@@ -1,3 +1,4 @@
+"""Where a delisted holding gets liquidated: that day close or that day open (23.18)."""
 from __future__ import annotations
 
 import json

@@ -1,3 +1,4 @@
+"""How much of the capacity conclusion is only 100-share lot rounding? (23.17)"""
 from __future__ import annotations
 
 import sys

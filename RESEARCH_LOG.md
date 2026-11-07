@@ -102,6 +102,7 @@
 - 23.95 新鲜度审计：哪些结论是用「今天的引擎」推导出来的
 - 23.96 一条命令重跑「决策关键集」——以及为什么这轮没做面板缓存
 - 23.97 端到端演练：文档写的流程能不能照着走通
+- 23.98 反向审计：106 个脚本里 42 个既没被记录也没被测试
 <!-- /TOC -->
 
 ## 1. 数据源与范围
@@ -7063,6 +7064,57 @@ momentum 仍在册 t=1.68（不显著）。5 日与 60 日表见 `reports/factor
 - `RUNBOOK.md`（仓库根目录：分步命令、期望结果、已知非零退出、故障速查）
 - `tests/test_runbook.py`（五项：脚本存在、子命令存在、非零说明在、权威文档被引用、三个自检齐备）
 - `FINDINGS.md` 第 69 条
+
+### 23.98 反向审计：106 个脚本里 42 个既没被记录也没被测试
+
+§23.97 是正向审计（文档说的能不能跑）。这一节反过来问：**跑着的、有产物的，有没有没写下来的**。
+方法很笨：读每个脚本的 docstring、看它的文件名有没有出现在研究日志里、有没有对应的测试
+（`scripts/build_script_inventory.py`，产物 `SCRIPTS.md`）。
+
+| 项 | 数量 |
+|---|---:|
+| 脚本总数 | 106 |
+| 在研究日志里出现过 | 62 |
+| 有对应测试 | 32 |
+| **两者都没有** | **42** |
+
+（上表是**修复前**的快照。给 9 个脚本补上 docstring、并把它们写进本节之后，重新生成的结果
+变成 **106 / 64 已记录 / 34 有测试 / 40 孤儿**——脚本名一旦出现在日志正文里，「已记录」就会变。
+文字与统计互相影响，这是个小而真实的例子：**任何把文档存在与否当作指标的审计，都会被写作
+本身推动**。）
+
+三点：
+
+1. **42 这个数不等于 42 份技术债。** 它们绝大多数是**上一轮会话的研究脚本**：产物在
+   （`reports/robustness/`、`stress/`、`survivorship/` …）、结论在日志里写得很清楚，
+   只是**脚本名没进日志**——早期章节的"定位"只写 `reports/`，逐脚本点名是后来的习惯。所以
+   "documented" 这一列是**文件名级的记录**，不是"这项研究有没有被记录"。把 42 当成要清算的债，
+   就会去删掉一堆有真实产物的脚本。
+2. **真正该修的是其中 9 个连 docstring 都没有的。** 名字能猜到用途，但猜不是记录。本轮给这 9 个
+   各补了一行 docstring，并对照日志目录核准了引用（`run_adv_lookahead` / `run_lot_quantization`
+   → §23.17，`run_delisting_exit_price` → §23.18，`run_adjustment_audit` / `run_adjustment_rebuild`
+   → §23.19，`run_signal_consistency` → §23.16）。现在**除了 `__init__.py`，每个脚本都有 docstring**，
+   这条已经进测试。
+3. **索引比清算便宜。** 我没有去逐个补 42 条"定位"，而是生成 `SCRIPTS.md`：每个脚本一行，含类别、
+   是否被记录、是否有测试、docstring 首句。它由测试保证与实物一致。想知道"这个脚本是什么"时
+   查它，比在 97 节里搜名字快。
+
+#### 这条审计暴露的更大问题
+
+"有测试" 只有 32/106。研究脚本大多是一次性计算，写单元测试的边际收益低——**但它们真正缺的
+不是测试，是可复现的入口**：`run_x.py` 能跑出那个目录，却没有断言"跑出来的东西符合预期"。
+本轮没有解决这一点，只把现状量清楚并写进 `SCRIPTS.md`。要真解决，需要给关键研究加"产物
+指纹"（像 §23.87 对发布配置做的那样），那是一项独立的工作。
+
+#### 定位
+
+- `scripts/build_script_inventory.py`、`SCRIPTS.md`（生成物）、`reports/script_inventory.json`
+- `tests/test_script_inventory.py`（四项：与重新生成一致、脚本全覆盖、除 `__init__` 外都有 docstring、计数自洽）
+- 本轮补 docstring 的 9 个脚本：`download_pit_raw`、`download_pit_raw_rest`、`run_adjustment_audit`、
+  `run_adjustment_rebuild`、`run_adv_lookahead`、`run_delisting_exit_price`、`run_final`、
+  `run_lot_quantization`、`run_signal_consistency`
+- `FINDINGS.md` 第 70 条
+
 
 
 

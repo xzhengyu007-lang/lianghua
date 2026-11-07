@@ -1,3 +1,4 @@
+"""Rebuild multiplicative total-return series from raw + qfq, then re-run the baseline (23.19)."""
 from __future__ import annotations
 
 import sys

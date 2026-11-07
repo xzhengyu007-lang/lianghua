@@ -1,3 +1,4 @@
+"""Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19)."""
 import sys, json, time
 from pathlib import Path
 sys.path.insert(0, '.')

@@ -1,3 +1,4 @@
+"""Compare qfq / raw / rebuilt series on one window: the additive-adjustment problem (23.19)."""
 from __future__ import annotations
 
 import sys
