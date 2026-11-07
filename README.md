@@ -268,7 +268,7 @@ scripts/        run_baseline.py, run_final.py, run_capacity.py, run_robustness.p
                 run_diversification_audit.py, run_stress_deleveraging.py,
                 run_signal_consistency.py, run_adv_lookahead.py,
                 run_lot_quantization.py, run_delisting_exit_price.py,
-                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
+                run_signals.py, run_vol_calibration.py（波动目标校准与口径复核）, run_power_study.py（检出力曲线）, run_cost_target_interaction.py（成本 × 风险预算配对）, run_cost_decomposition.py（每笔成本分解）, run_phase_risk_comparison.py（相位风险对比）, run_year_table.py（年度分解）, build_research_toc.py（研究日志目录）, build_dashboard.py（离线可视化面板）, serve_dashboard.py（本地服务 + 实验室实时回测）, run_verification.py（数据/复现/因果一键自检）, run_tradability.py（可交易性：横截面宽度、停牌股-日、冻结槽位）, run_breadth_ic.py（IC 的宽度/成分分解）, run_factor_cohorts.py（因子库的在册/退市分解）, run_52w_overlay.py（52 周高点叠加的三窗口复检）, run_pnl_cohorts.py（已实现盈亏的成分分解）, run_selection_slack.py（可选性与行业上限的约束检验）, run_selection_character.py（选中标的的横截面特征）, run_phase_recheck.py（20 相位 × 2 锚点的重测）, run_phase_blend.py（相位平均复核）, run_capacity_blend.py（混合口径的容量曲线）, run_voltarget_blend.py（混合口径下的波动目标定价）, run_year_table_blend.py（发布配置的年度表 2×2 分解）, run_publish_check.py（发布配置自检：可复现/指纹/因果）, run_signal_horizon.py（IC 有效期曲线）, run_score_weights.py（打分权重检验）, run_lookahead_audit.py（打乱未来/截断的管线级前视审计）, run_lookahead_negative_control.py（泄漏负对照）, build_chained_equity.py（拼接两段净值）,
                 run_bootstrap_ci.py（自助法区间）, run_sizing_study.py（波动目标刻度）,
                 rebuild_from_hfq.py（从后复权重建并统一缩放前复权序列）
 tests/          pytest 套件（数据、执行、切片、选择、信号、滚动验证、账本）
@@ -319,7 +319,7 @@ RESEARCH_LOG.md 研究日志与诚实结论
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前 **321 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
+当前 **325 项全部通过**。测试套房覆盖数据接入与分页拼接、执行约束、滚动切片、
 选股规则、信号、账本、缓存审计与报告语义，以及管线级前视审计工具本身。
 
 ### 一键自检
@@ -331,6 +331,20 @@ RESEARCH_LOG.md 研究日志与诚实结论
 约 5 秒跑三项：数据完整性（267 只都有收盘、无重复索引、无负价）、可复现性
 （同一权重两次回测净值逐位相等）、因果性（截断面板后**重新生成信号**，切点前
 净值逐位不变）。改完任何信号或风控代码先跑这个，再跑下面的完整审计。§23.68。
+
+**但它跑的是旧默认配置**（单相位、18% 目标）。要把“要部署的东西”也审计一遍——
+混合 + 12%（§23.85）——用（约 2 分钟，因为它要重建 20 个相位）：
+
+```powershell
+.\\.venv\\Scripts\\python.exe scripts\\run_publish_check.py
+```
+
+三项：两次**独立**构建的混合权重必须完全相同；全期指标必须与记录值一致（指纹，容差 1e-9）；
+在 2023-06-30 截断面板后重建混合，切点前净值必须不动。§23.87。
+
+> **口径提醒（ddof）**：年表类脚本用 `std(ddof=0)`，引擎 `metrics` 用 `ddof=1`，两者 Sharpe
+> 差 `sqrt(1799/1800)`（约 0.00025）。数字都没错，但**跨脚本比较前先确认分母**——这已经是
+> 本仓第三处同类坑（另两处：§23.48 的首日、§23.73 的 `slice_result` 与逐日复利）。
 
 ### 前视偏差审计
 
