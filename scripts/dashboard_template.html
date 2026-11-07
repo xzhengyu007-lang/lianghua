@@ -205,11 +205,12 @@
         <div class="ph">策略参数</div>
         <div class="pb" style="max-height:none">
           <div class="ctl" style="border-bottom:1px solid var(--border);margin-bottom:6px"><label>策略</label><select id="lab-strategy"></select></div>
-          <div id="lab-controls"></div>
-          <div style="display:flex;gap:8px;padding:12px 9px">
+          <div class="ctl" style="border-bottom:1px solid var(--border);margin-bottom:6px"><label>模式</label><select id="lab-mode"></select></div>
+          <div style="display:flex;gap:8px;padding:10px 9px;border-bottom:1px solid var(--border);margin-bottom:6px">
             <button class="primary" id="lab-run">跑一次</button>
             <button class="chip" id="lab-reset">恢复默认</button>
           </div>
+          <div id="lab-controls"></div>
         </div>
       </div>
       <div class="chartwrap">
@@ -487,7 +488,7 @@ $('#q-log').oninput = renderLogNav;
 
 
 /* ---------- lab (needs the local server) ---------- */
-var LAB = { meta: null, last: null, strategy: 'low_vol_core' };
+var LAB = { meta: null, last: null, strategy: 'low_vol_core', mode: 'single' };
 
 function baselineReport(){
   for (var i=0;i<DATA.reports.length;i++) if (DATA.reports[i].name==='pit_full267_year') return DATA.reports[i];
@@ -498,7 +499,9 @@ function labInit(){
   fetch('/api/meta').then(function(r){ return r.json(); }).then(function(meta){
     LAB.meta = meta;
     LAB.strategy = meta.default_strategy || 'low_vol_core';
+    LAB.mode = meta.default_mode || 'single';
     renderStrategySelect();
+    renderModeSelect();
     renderLabControls();
     var w = meta.window;
     $('#lab-status').innerHTML = '数据窗口 ' + w.start + ' .. ' + w.end + ' · ' + w.symbols +
@@ -517,6 +520,24 @@ function renderStrategySelect(){
     return '<option value="'+n+'"'+(n===LAB.strategy?' selected':'')+'>'+n+'</option>';
   }).join('');
   sel.onchange = function(){ LAB.strategy = sel.value; renderLabControls(); };
+}
+
+function renderModeSelect(){
+  var sel = $('#lab-mode');
+  if(!sel || !LAB.meta) return;
+  var modes = LAB.meta.modes || {single: '单相位'};
+  sel.innerHTML = Object.keys(modes).map(function(k){
+    return '<option value="'+k+'"'+(k===LAB.mode?' selected':'')+'>'+modes[k]+'</option>';
+  }).join('');
+  sel.onchange = function(){
+    LAB.mode = sel.value;
+    if(sel.value === 'deploy'){
+      var target = document.querySelector('#lab-controls [data-k=target_vol]');
+      if(target) target.value = (LAB.meta.deployable || {}).target_vol;
+      var anchor = document.querySelector('#lab-controls [data-k=rebalance_reset]');
+      if(anchor) anchor.value = (LAB.meta.deployable || {}).rebalance_reset;
+    }
+  };
 }
 
 function labControl(f, value){
@@ -553,14 +574,21 @@ function labParams(){
   document.querySelectorAll('#lab-controls [data-k]').forEach(function(el){
     out[el.dataset.k] = (el.type === 'checkbox') ? el.checked : el.value;
   });
-  return { strategy: LAB.strategy, params: out };
+  var strategySel = $('#lab-strategy');
+  var modeSel = $('#lab-mode');
+  return {
+    strategy: strategySel ? strategySel.value : LAB.strategy,
+    mode: modeSel ? modeSel.value : LAB.mode,
+    params: out
+  };
 }
 
 function runLab(){
   var btn = $('#lab-run');
   btn.disabled = true; btn.textContent = '运行中...';
   $('#lab-out').innerHTML = '<div class="empty">回测运行中…</div>';
-  var url = '/api/run?params=' + encodeURIComponent(JSON.stringify(labParams()));
+  var payload = labParams();
+  var url = '/api/run?params=' + encodeURIComponent(JSON.stringify(payload));
   fetch(url).then(function(r){ return r.json(); }).then(function(res){
     if(res.error) throw new Error(res.error);
     LAB.last = res;

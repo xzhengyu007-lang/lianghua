@@ -47,6 +47,20 @@ def test_clean_falls_back_on_garbage_values():
     assert applied["rebalance_reset"] == "year"
 
 
+def test_only_known_modes_are_accepted():
+    assert server.normalise_mode("blend") == "blend"
+    assert server.normalise_mode("single") == "single"
+    assert server.normalise_mode("nonsense") == "single"
+    assert server.normalise_mode(None) == "single"
+    assert server.normalise_mode("deploy") == "deploy"
+    assert set(server.MODES) == {"single", "blend", "deploy"}
+    assert server.DEPLOY_TARGET_VOL == 0.12
+
+
+def test_blend_uses_twenty_phases():
+    assert server.BLEND_PHASES == 20
+
+
 def test_zero_sector_cap_means_unlimited_not_zero():
     _, applied = server._clean({"max_per_sector": 0})
     assert applied["max_per_sector"] == 0

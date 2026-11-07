@@ -187,19 +187,35 @@ class Engine:
         if strategy_params.get("max_per_sector") == 0:
             strategy_params["max_per_sector"] = None
 
+        mode = normalise_mode(raw.get("mode") if isinstance(raw, dict) else None)
+        requested_mode = mode
+        if mode == "deploy":
+            # The deployable configuration is defined here, not in the browser, so
+            # the page cannot drift away from what 23.85/23.87 verified.
+            mode = "blend"
+            target_vol = DEPLOY_TARGET_VOL
+
+        def weights_for(offset_value: int):
+            params = dict(strategy_params)
+            params["rebalance_offset"] = offset_value
+            strategy = build_strategy(name, **params)
+            return build_portfolio(
+                strategy.generate(self._aligned),
+                self._aligned,
+                benchmark=self._benchmark,
+                risk=RiskConfig(target_annual_vol=target_vol),
+                use_regime=False,
+                use_vol_target=True,
+                use_turnover_cap=False,
+                vol_forecast="realised",
+            )
+
         started = time.time()
-        strategy = build_strategy(name, **strategy_params)
-        raw_signals = strategy.generate(self._aligned)
-        weights = build_portfolio(
-            raw_signals,
-            self._aligned,
-            benchmark=self._benchmark,
-            risk=RiskConfig(target_annual_vol=target_vol),
-            use_regime=False,
-            use_vol_target=True,
-            use_turnover_cap=False,
-            vol_forecast="realised",
-        )
+        if mode == "blend":
+            frames = [weights_for(k) for k in range(BLEND_PHASES)]
+            weights = sum(frames) / len(frames)
+        else:
+            weights = weights_for(int(strategy_params.get("rebalance_offset") or 0))
         result = Backtester(
             BacktestConfig(
                 initial_cash=self.initial_cash,
@@ -220,6 +236,7 @@ class Engine:
 
         return {
             "strategy": name,
+            "mode": requested_mode,
             "params": applied,
             "metrics": metrics,
             "eq": points,
@@ -281,6 +298,21 @@ def _spec_payload(name: str) -> list:
     return _spec_payload_from(strategy_spec(name))
 
 
+# "single" is the incumbent default book; "blend" is the deployable
+# configuration from RESEARCH_LOG 23.85 (20 phases, equal weight, 12% target).
+BLEND_PHASES = 20
+MODES = {
+    "single": "单相位（约 2 秒）",
+    "blend": "混合 %d 相位（约 40 秒）" % BLEND_PHASES,
+    "deploy": "部署口径：混合 + 12%% 目标（约 40 秒）",
+}
+DEPLOY_TARGET_VOL = 0.12
+
+
+def normalise_mode(raw) -> str:
+    return raw if raw in MODES else "single"
+
+
 ENGINE: Engine | None = None
 LOCK = threading.Lock()
 
@@ -322,6 +354,9 @@ class Handler(BaseHTTPRequestHandler):
                     {
                         "window": ENGINE.window,
                         "default_strategy": "low_vol_core",
+                        "default_mode": "single",
+                        "modes": MODES,
+                        "deployable": {"mode": "blend", "target_vol": 0.12, "rebalance_reset": "year"},
                         "strategies": {
                             name: _spec_payload(name) for name in sorted(STRATEGY_REGISTRY)
                         },
