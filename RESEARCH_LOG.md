@@ -119,6 +119,7 @@
 - 23.112 给这套东西改名：真正干活的是趋势过滤，不是低波打分
 - 23.113 破坏性可复现性检验：删掉产物再重新生成，能不能逐字节复现
 - 23.114 数据清单：让人能确认"我拿到的是不是作者那一份"
+- 23.115 整体交付检查：七项全绿，但查出 246 个临时文件混进了仓库
 <!-- /TOC -->
 
 ## 1. 数据源与范围
@@ -7907,6 +7908,57 @@ exit=1
 - `tests/test_data_manifest.py`（四项：一致时静默、变更带前后形状、缺失/多余分离、与实时缓存吻合）
 - `RUNBOOK.md` §2.1「如果你是刚 clone 下来的」
 - `FINDINGS.md` 第 86 条
+
+### 23.115 整体交付检查：七项全绿，但查出 246 个临时文件混进了仓库
+
+先看结果（本轮实跑）：
+
+| 检查 | 结果 |
+|---|---|
+| `pytest` | **427 项全过** |
+| `run_verification.py` | data / reproducibility / causality **all_ok** |
+| `run_publish_check.py` | 三项 **all_ok** |
+| `audit_staleness.py` | 249 个报告目录，**引用失效 0**，关键集全新鲜 |
+| `check_artifact_fingerprints.py` | 18 报告 / 50 文件，**0 problems** |
+| `audit_decision_claims.py` | 17 处引用 / 20 个数字，**0 孤儿** |
+| `build_data_manifest.py --check` | 808 个缓存文件，**0 problems** |
+
+四份根目录文档：README 796 行、DECISION 57 行、RUNBOOK 75 行、SCRIPTS 169 行。
+
+#### 查出的问题：仓库里被提交了 246 个 pytest 临时文件
+
+`git status` 显示大量 `pytest-of-Administrator/pytest-8/...` 的删除记录——意味着它们**已经被提交进仓库**了，
+数量 246 个，最早出现在 §23.109 那几轮。
+
+根因是环境相关的：**pytest 的 basetemp 在本机被解析成相对于工作目录**（删掉之后跑测试会重新生成，
+已实测），于是 `git add -A` 就把整个临时树扫进去了。我之前每次提交都用 `git add -A`，
+而 `.gitignore` 里没有对应规则。
+
+修法三步：
+
+1. `git rm -r --cached pytest-of-Administrator` + 从磁盘删除；
+2. `.gitignore` 增加 `pytest-of-*/` 与 `pytest-*/`，并写明原因；
+3. **加一条守卫测试**（`tests/test_runbook.py`）：断言 `git ls-files` 里没有任何
+   `pytest-of-*` / `pytest-*` / `dsh-spill` 路径。
+
+三点：
+
+1. **这属于"我自己的交付物有缺陷"，不是环境问题。** 环境让 basetemp 落到 cwd，但把它提交进仓库
+   的是我的 `git add -A`。一个每次都 `git add -A` 的仓库，必须有一条"什么不该进来"的断言，
+   否则迟早出事。
+2. **历史里仍然留着那些 blob。** 它们出现在 `6d22bc8..dd29e02` 之间，要彻底清掉需要改写历史
+   （filter-repo 或 rebase），代价与收益不成比例——仓库是私有的、体量只有几 MB。**这里只做索引与
+   磁盘清理，并在日志里写明历史仍有残留**，不假装干净。
+3. **守卫必须是测试。** 我三次遇到"新增依赖没进关键集"也都被测试抓到（§23.108/§23.112），这说明
+   这类"外围一致性"只能靠断言维持，靠记忆一定漏。
+
+#### 定位
+
+- `.gitignore`（新增 `pytest-of-*/`、`pytest-*/`）
+- `tests/test_runbook.py`（新增：`git ls-files` 不得含临时目录）
+- 清理动作：`git rm -r --cached pytest-of-Administrator` + 磁盘删除（246 个文件）
+- `FINDINGS.md` 第 87 条
+
 
 
 

@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+# pytest sometimes resolves its basetemp relative to the working directory; those
+# trees must never be committed (246 such files slipped in once -- see 23.115).
+pytest-of-*/
+pytest-*/
 data/cache/
 data/cache_rawcheck/
 reports/runs/

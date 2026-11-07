@@ -59,6 +59,25 @@ def test_runbook_documents_the_known_nonzero_exit():
     assert "§23.19" in text
 
 
+def test_no_temporary_directories_are_tracked():
+    """Repo hygiene: pytest's basetemp once leaked 246 files into the index."""
+    import subprocess
+
+    try:
+        completed = subprocess.run(
+            ["git", "ls-files"], cwd=str(ROOT), capture_output=True, text=True, timeout=30
+        )
+    except (OSError, subprocess.SubprocessError):
+        pytest.skip("git is unavailable")
+    if completed.returncode != 0:
+        pytest.skip("not a git checkout")
+    junk = [
+        line for line in completed.stdout.splitlines()
+        if "pytest-of-" in line or "dsh-spill" in line or line.startswith("pytest-")
+    ]
+    assert junk == [], junk[:5]
+
+
 def test_runbook_points_at_the_authority_documents():
     text = _text()
     for name in ("DECISION.md", "FINDINGS.md", "RESEARCH_LOG.md", "README.md"):
