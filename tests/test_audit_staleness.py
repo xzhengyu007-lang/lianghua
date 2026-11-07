@@ -1,0 +1,58 @@
+"""Tests for the staleness / citation audit (23.95)."""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_module():
+    spec = importlib.util.spec_from_file_location(
+        "audit_staleness", ROOT / "scripts" / "audit_staleness.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+audit = _load_module()
+
+
+def test_newest_mtime_picks_the_latest_file(tmp_path):
+    old = tmp_path / "old.txt"
+    new = tmp_path / "new.txt"
+    old.write_text("a", encoding="utf-8")
+    new.write_text("b", encoding="utf-8")
+    os.utime(old, (1000, 1000))
+    os.utime(new, (2000, 2000))
+    assert audit.newest_mtime([old, new]) == 2000
+
+
+def test_newest_mtime_survives_missing_paths(tmp_path):
+    missing = tmp_path / "nope.txt"
+    assert audit.newest_mtime([missing]) == 0.0
+
+
+def test_the_findings_ledger_has_no_dangling_citations():
+    """Every §-reference and reports/ path in FINDINGS must resolve."""
+    problems = audit.check_citations()
+    assert problems == [], problems
+
+
+def _summary():
+    path = ROOT / "reports" / "audit_staleness" / "summary.json"
+    if not path.exists():
+        pytest.skip("run scripts/audit_staleness.py first")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_every_critical_report_is_present_and_fresh():
+    payload = _summary()
+    stale = [row for row in payload["critical"] if not row["fresh"]]
+    assert stale == [], stale
