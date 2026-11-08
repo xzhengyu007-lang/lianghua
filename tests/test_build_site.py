@@ -97,6 +97,31 @@ def test_equity_curve_is_built_from_daily_returns():
     assert curve[-1][1] > 0
 
 
+def test_drawdown_curve_matches_the_reported_max_drawdown():
+    """The chart must agree with the headline number, or one of them is lying."""
+    curve = site.drawdown_curve()
+    assert curve, "no drawdown curve"
+    worst = min(point[1] for point in curve)
+    published = site.deployable()
+    assert abs(worst / 100.0 - published["max_drawdown"]) < 0.01
+
+
+def test_rolling_sharpe_curve_actually_varies():
+    """A flat line would mean the rolling window is broken, not that risk is low."""
+    curve = site.rolling_sharpe_curve()
+    assert curve, "no rolling sharpe"
+    values = [point[1] for point in curve]
+    assert max(values) > 0.5
+    assert min(values) < 0.5
+
+
+def test_risk_page_carries_both_risk_charts():
+    text = _text("risk.html")
+    assert "回撤曲线（水下）" in text
+    assert "滚动 12 个月 Sharpe" in text
+    assert text.count("<svg") == 2
+
+
 def test_market_page_reports_breadth_and_cadence_semantics():
     text = _text("market.html")
     assert "涨 / 跌" in text

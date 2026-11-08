@@ -412,6 +412,55 @@ def deployable_curve(max_points: int = 240):
     return [series[min(len(series) - 1, int(i * step))] for i in range(max_points)]
 
 
+def deployable_series():
+    """Daily returns of the published configuration, for risk charts."""
+    path = ROOT / "reports" / "year_table_blend" / "daily_returns.csv"
+    if not path.exists():
+        return None
+    import csv as _csv
+
+    import pandas as pd
+
+    with path.open(encoding="utf-8-sig") as handle:
+        rows = list(_csv.DictReader(handle))
+    if not rows:
+        return None
+    frame = pd.DataFrame(rows)
+    frame["date"] = pd.to_datetime(frame["date"])
+    frame["return"] = pd.to_numeric(frame["return"], errors="coerce").fillna(0.0)
+    return frame.set_index("date")["return"]
+
+
+def drawdown_curve(max_points: int = 240):
+    """Underwater plot: how far below the running peak, in percent."""
+    returns = deployable_series()
+    if returns is None or len(returns) < 10:
+        return []
+    equity = (1.0 + returns).cumprod()
+    peak = equity.cummax()
+    depth = (equity / peak - 1.0) * 100.0
+    points = list(enumerate(depth.tolist()))
+    if len(points) <= max_points:
+        return points
+    step = len(points) / float(max_points)
+    return [points[min(len(points) - 1, int(i * step))] for i in range(max_points)]
+
+
+def rolling_sharpe_curve(window: int = 252, max_points: int = 240):
+    """Trailing 12-month Sharpe: the record's own stability over time."""
+    returns = deployable_series()
+    if returns is None or len(returns) < window + 20:
+        return []
+    mean = returns.rolling(window).mean()
+    std = returns.rolling(window).std()
+    sharpe = (mean / std * (252 ** 0.5)).dropna()
+    points = list(enumerate(sharpe.tolist()))
+    if len(points) <= max_points:
+        return points
+    step = len(points) / float(max_points)
+    return [points[min(len(points) - 1, int(i * step))] for i in range(max_points)]
+
+
 def find_report(reports, needle: str):
     for report in reports:
         if needle in report.get("name", ""):
@@ -827,6 +876,21 @@ def page_risk(ctx) -> str:
         body.append(panel("容量",
                           table(["窗口", "参与率", "Sharpe", "累计收益"], rows, numeric=(2, 3)),
                           "资金规模上升时冲击成本如何侵蚀收益"))
+
+    drawdown = drawdown_curve()
+    if drawdown:
+        worst = min(point[1] for point in drawdown)
+        body.append(panel(
+            "回撤曲线（水下）",
+            svg_curve(drawdown, height=170, colour="#ff5c7c"),
+            "最深回撤 %.2f%%，虚线为零轴；横轴为交易日序号，纵轴为相对历史高点的跌幅" % worst))
+
+    rolling = rolling_sharpe_curve()
+    if rolling:
+        body.append(panel(
+            "滚动 12 个月 Sharpe",
+            svg_curve(rolling, height=170, colour="#5b9dff"),
+            "把 7 年切成滚动一年——曲线自己在 0 附近上下穿，就是「点估计 0.902 只是中点」的直观形态"))
 
     body.append(panel("本仓明确没解决的事", '<ul class="tight">'
                       "<li><b>数据缓存不入库。</b>别人 clone 后必须自己下载，"
