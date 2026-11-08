@@ -30,6 +30,9 @@ from quant_system.config import BROAD_UNIVERSE  # noqa: E402
 from quant_system.data import TencentProvider, normalize_symbol  # noqa: E402
 
 
+SOURCE_LIMIT = "2010-06-30"
+
+
 def depth(cache_dir: Path, symbol: str) -> int:
     """Bars already cached for this symbol, raw or rebuilt, 0 if absent."""
     best = 0
@@ -46,11 +49,45 @@ def depth(cache_dir: Path, symbol: str) -> int:
     return best
 
 
-def plan(cache_dir: Path, target_rows: int) -> tuple[list[str], list[str]]:
+def first_bar(cache_dir: Path, symbol: str):
+    """Date of the oldest cached bar, or None."""
+    for suffix in ("_raw.parquet", "_tr.parquet", "_qfq.parquet"):
+        path = cache_dir / (symbol + suffix)
+        if not path.exists():
+            continue
+        try:
+            import pandas as pd
+
+            frame = pd.read_parquet(path, columns=[])
+            return frame.index.min()
+        except Exception:
+            continue
+    return None
+
+
+def is_complete(cache_dir: Path, symbol: str, target_rows: int, adjust: str = "") -> bool:
+    """A cached file means the paging finished; nothing more can be fetched.
+
+    The provider serves a fixed number of bars and then stops, so a name that
+    listed in 2018 legitimately ends up with ~2000 rows. Keying completion on the
+    row count re-downloads those on every pass and burns the throttle budget for
+    data that does not exist.
+    """
+    suffix = "_%s.parquet" % (adjust or "raw")
+    if (cache_dir / (symbol + suffix)).exists():
+        return True
+    if adjust:
+        # A specific variant was requested: depth in another variant does not
+        # satisfy it, or the rebuilt step would run on a half-filled cache.
+        return False
+    return depth(cache_dir, symbol) >= target_rows
+
+
+def plan(cache_dir: Path, target_rows: int, adjust: str = "") -> tuple[list[str], list[str]]:
     symbols = [normalize_symbol(s) for s in BROAD_UNIVERSE]
     have, need = [], []
     for symbol in symbols:
-        (have if depth(cache_dir, symbol) >= target_rows else need).append(symbol)
+        (have if is_complete(cache_dir, symbol, target_rows, adjust) else need).append(symbol)
     return have, need
 
 
@@ -58,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache-dir", default=str(ROOT / "data" / "cache_ext"))
     parser.add_argument("--target-rows", type=int, default=4000)
+    parser.add_argument("--adjust", default="", help="'' for raw, or qfq/hfq")
     parser.add_argument("--passes", type=int, default=4, help="resume passes over the remainder")
     parser.add_argument("--pause", type=float, default=1.0, help="seconds between requests")
     parser.add_argument("--backoff", type=float, default=90.0, help="seconds to wait after a 501 burst")
@@ -67,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     cache = Path(args.cache_dir)
-    have, need = plan(cache, args.target_rows)
+    have, need = plan(cache, args.target_rows, args.adjust)
 
     print("target %d rows | already deep enough: %d | remaining: %d"
           % (args.target_rows, len(have), len(need)))
@@ -79,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     provider = TencentProvider(cache, pause=args.pause, retries=2, timeout=25)
     log = []
     for attempt in range(1, args.passes + 1):
-        pending = [s for s in need if depth(cache, s) < args.target_rows]
+        pending = [s for s in need if not is_complete(cache, s, args.target_rows, args.adjust)]
         if not pending:
             break
         print("pass %d: %d pending" % (attempt, len(pending)), flush=True)
@@ -88,7 +126,8 @@ def main(argv: list[str] | None = None) -> int:
             if depth(cache, symbol) >= args.target_rows:
                 continue
             try:
-                result = provider.download(symbol, count=args.target_rows, adjust="", force=True)
+                result = provider.download(symbol, count=args.target_rows,
+                                           adjust=args.adjust, force=True)
                 # download() returns a DownloadResult, not a frame: it already
                 # carries the row count and the span, so asking len() fails.
                 rows = int(result.rows)
@@ -106,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
                     streak = 0
             time.sleep(args.pause)
 
-    have, need = plan(cache, args.target_rows)
+    have, need = plan(cache, args.target_rows, args.adjust)
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
     (out / "summary.json").write_text(

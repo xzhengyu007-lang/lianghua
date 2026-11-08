@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 123 |
-| 在研究日志里出现过 | 82 |
-| 有对应测试 | 51 |
+| 脚本总数 | 124 |
+| 在研究日志里出现过 | 83 |
+| 有对应测试 | 52 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -79,6 +79,7 @@
 | `download_pit_raw.py` | download | — | — | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_loop.py` | download | ✓ | — | Retry raw downloads for the PIT pool until every symbol has a cache. |
 | `download_pit_raw_rest.py` | download | — | — | Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19). |
+| `measure_window.py` | other | ✓ | ✓ | Where would the research window land if the extended history were used? |
 | `probe_delisted.py` | other | ✓ | — | Probe the kline endpoint for many codes and classify by last bar date. |
 | `rebuild_from_hfq.py` | other | ✓ | — | Rebuild a symbol's qfq cache from hfq rescaled to the latest raw close. |
 | `refresh_critical.py` | other | ✓ | ✓ | Rebuild the reports the decision rests on, in one command. |
