@@ -377,10 +377,19 @@ def test_a_suspect_quote_tells_the_user_not_to_use_that_price(tmp_path) -> None:
 
 
 def test_names_come_from_the_offline_universe(tmp_path) -> None:
+    """Synthetic symbols are real codes, so the manifest resolves their names.
+
+    The manifest keys are *bare* codes ("600000"), so a lookup with "sh600000"
+    against it silently yields an empty column -- which is how the broker file
+    shipped with a blank 证券名称 once.  Normalising the keys is the fix.
+    """
+    from quant_system.data import normalize_symbol, pit_universe
+
+    manifest = {normalize_symbol(key): value for key, value in pit_universe().items()}
     card = _built_card(tmp_path)
-    # synthetic symbols are not in the universe manifest -> an explicit dash, never a guess
-    assert all(item.name == "" for item in card.items)
-    assert "（金融）" in card.markdown() or "（" in card.markdown()
+    assert any(item.name for item in card.items), "at least one synthetic code is in the manifest"
+    for item in card.items:
+        assert item.name == manifest.get(item.symbol, ""), item.symbol
 
 
 def test_card_json_round_trips_the_six_elements(tmp_path) -> None:
