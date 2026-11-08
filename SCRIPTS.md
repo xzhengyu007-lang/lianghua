@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 128 |
+| 脚本总数 | 129 |
 | 在研究日志里出现过 | 84 |
-| 有对应测试 | 54 |
+| 有对应测试 | 55 |
 | **两者都没有（孤儿）** | **42** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -109,6 +109,7 @@
 | `run_cost_target_interaction.py` | run | ✓ | ✓ | Does the 12% risk budget survive a harsh cost model? |
 | `run_cross_pool.py` | run | ✓ | ✓ | Would a second market actually buy us independent evidence? |
 | `run_cross_pool_random.py` | run | ✓ | ✓ | Does the edge survive a narrower cross-section? Random sub-pool test. |
+| `run_daily_ops.py` | run | — | ✓ | One command for the close-of-day loop: signal → advice → plan → statement → recon. |
 | `run_delisting_exit_price.py` | run | — | — | Where a delisted holding gets liquidated: that day close or that day open (23.18). |
 | `run_diversification_audit.py` | run | — | — | Does the book actually diversify, or only look diversified? |
 | `run_execution_timing.py` | run | ✓ | ✓ | How much of the edge survives being late? |

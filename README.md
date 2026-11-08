@@ -169,24 +169,29 @@ python -m venv .venv
 | 技术栈 | stdlib `ThreadingHTTPServer` + 原生 JS + 单个 vendored 图表文件（Apache-2.0）；**无 Node、无构建、无 CDN** |
 | 文档 | `docs/UI方案.md`（选型理由、10 万根方案、防误触、实测） |
 
-模拟盘 20 日权益曲线（证据产物，`reports/paper_replay/`）：
+### 收盘作业（一条命令，红线 #9）
 
 ```powershell
-.\.venv\Scripts\python.exe scriptsun_paper_replay.py --sessions 20 --equity 1000000
-# 回放 20 个交易日（2026-10-12 → 2026-11-06）：累计 +1.58%，最大回撤 -2.93%，费用 771.61
+.\.venv\Scripts\python.exe scripts\run_daily_ops.py --date 2026-11-09 --broker reports\paper\broker.json
+# signal ✅ ｜ advice ✅ ｜ plan ⏭ ｜ statement ✅ ｜ reconcile ❌ 有差异
+# 报告：reports\daily_ops\2026-11-09\report.md（summary.json 同目录）
 ```
+
+退出码：`0` 全绿、`1` 需要人看（数据过期 / 停机 / 对账差异 / **真实拒单**）、`2` 作业本身失败。
+拒单分两类：`T+1 当日买入不可卖`、`重复生成已被拒绝`、`低于最小下单额` 属于"规则在生效"，
+报告写明"今天不需要动作"；`现金不足`、`停牌`、`限价越界` 归为需要人看。
+`plan` 只写订单与审计，**账本一分钱不动**，`--fills` 才移动资金——所以重跑当天是安全的。
 
 页面把"缺什么"说清楚而不是空白：没有账本/建议卡时给出该跑哪条命令；数据闸门关闭时只显示告警；
 命令行 `aq trade --action kill` 之后页面在 3 秒内变红（服务端每次读状态都检查 `gate.json` 的 mtime）。
 
-模拟盘 20 日权益曲线（证据产物，落在 `reports/paper_replay/`）：
+模拟盘 20 日权益曲线（证据产物，`reports/paper_replay/`）：
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_paper_replay.py --sessions 20 --equity 1000000
 # 回放 20 个交易日（2026-10-12 → 2026-11-06）：累计 +1.58%，最大回撤 -2.93%，费用 771.61
 # 口径：逐日截断面板重算信号（无前视）、按次日开盘价 +5bp 滑点成交、走 paper 的账本路径
 ```
-
 
 `pit` 股票池 = 128 只当前宽基 + `data/delisted_manifest.json` 中 140 只真实退市股，
 共 268 只（同窗口内至少有一根 K 线的 267 只）。退市股只在仍有个股 K 线的日期
