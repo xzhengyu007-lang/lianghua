@@ -9,6 +9,7 @@ pytest-*/
 data/cache/
 data/cache_rawcheck/
 data/cache_probe/
+data/cache_ext/
 reports/runs/
 .DS_Store
 
