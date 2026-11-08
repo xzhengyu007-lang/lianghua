@@ -207,6 +207,51 @@ def weekday_calendar() -> TradingCalendar:
 
 _CALENDAR_CACHE: dict[tuple[str, int], tuple[float, TradingCalendar]] = {}
 CALENDAR_TTL_SECONDS = 3600.0
+CALENDAR_DISK_CACHE = Path("reports") / "realtime" / "calendar.json"
+
+
+def _cache_signature(directory: Path, files: list[Path]) -> str:
+    """Cheap identity of the cache: how many files and the newest mtime."""
+    newest = 0.0
+    for path in files:
+        try:
+            newest = max(newest, path.stat().st_mtime)
+        except OSError:  # pragma: no cover - a vanished file is not worth failing on
+            continue
+    return "%s|%d|%.3f" % (directory, len(files), newest)
+
+
+def _read_disk_calendar(path: Path, signature: str) -> TradingCalendar | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if payload.get("signature") != signature or not payload.get("days"):
+        return None
+    return TradingCalendar([pd.Timestamp(day).date() for day in payload["days"]], source="cache")
+
+
+def _write_disk_calendar(path: Path, calendar: TradingCalendar, signature: str) -> None:
+    """Persist the calendar so a cold process does not re-read 536 parquet indexes.
+
+    Building it costs 1.1-1.3 s; that is a third of the advice command's warm
+    runtime and all of it was repeated on every fresh process.
+    """
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "signature": signature,
+                    "built_at": datetime.now(tz=CN_TZ).isoformat(),
+                    "days": [str(day) for day in calendar._days],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:  # pragma: no cover - read-only checkout is not fatal
+        return
 
 
 def load_calendar(
@@ -215,6 +260,7 @@ def load_calendar(
     max_files: int | None = None,
     clock: Callable[[], float] = time.monotonic,
     force: bool = False,
+    disk_cache: str | Path | None = None,
 ) -> TradingCalendar:
     """Build (and hour-cache) the session calendar from the parquet cache.
 
@@ -222,8 +268,9 @@ def load_calendar(
     mtime looked cheap and was wrong -- the newest files are delisted names whose
     history stops years ago, so the calendar silently ended at 2026-07-13 and a
     holiday then fell back to "weekday, therefore open".  Reading all 536 indexes
-    costs ~1.1 s (index column only) and the result is cached for an hour, so the
-    desk pays it once per process-hour and never inside a 3 s round.
+    costs ~1.1 s (index column only); the result is cached in memory for an hour
+    *and* on disk keyed by the cache's signature, so a cold process pays ~5 ms
+    instead of a second.
 
     ``max_files`` exists for tests; production passes ``None`` (all files).
     """
@@ -241,6 +288,14 @@ def load_calendar(
         files = sorted(files, key=lambda path: path.stat().st_mtime, reverse=True)[
             : max(1, int(max_files))
         ]
+    signature = _cache_signature(directory, files)
+    store_path = Path(disk_cache) if disk_cache is not None else CALENDAR_DISK_CACHE
+    if not force:
+        from_disk = _read_disk_calendar(store_path, signature)
+        if from_disk is not None:
+            _CALENDAR_CACHE[key] = (now, from_disk)
+            return from_disk
+
     days: set[date] = set()
     for path in files:
         try:
@@ -250,6 +305,8 @@ def load_calendar(
         days.update(pd.DatetimeIndex(index).normalize().date)
     calendar = TradingCalendar(days, source="cache") if days else weekday_calendar()
     _CALENDAR_CACHE[key] = (now, calendar)
+    if days:
+        _write_disk_calendar(store_path, calendar, signature)
     return calendar
 
 

@@ -903,3 +903,38 @@ def test_poller_thread_runs_rounds_and_stops(tmp_path) -> None:
     assert source.calls >= 2
     assert poller.status().rounds >= 2
     assert poller._thread is None
+
+
+def test_calendar_disk_cache_is_reused_and_invalidated(tmp_path, monkeypatch) -> None:
+    """A cold process must not re-read 536 parquet indexes (~0.9 s) every time."""
+    from quant_system import realtime as rt
+
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    disk = tmp_path / "calendar.json"
+    frame = pd.DataFrame({"close": [1.0, 1.0, 1.0]},
+                         index=pd.to_datetime(["2026-01-05", "2026-01-06", "2026-01-07"]))
+    frame.to_parquet(cache / "sh600000_raw.parquet")
+
+    rt._CALENDAR_CACHE.clear()
+    first = rt.load_calendar(cache, disk_cache=disk)
+    assert disk.exists()
+    assert first.last == pd.Timestamp("2026-01-07").date()
+
+    # A second cold process must be answered from the json, not from the parquet.
+    rt._CALENDAR_CACHE.clear()
+
+    def boom(*args, **kwargs):
+        raise AssertionError("the calendar was rebuilt instead of read from disk")
+
+    monkeypatch.setattr(rt.pd, "read_parquet", boom)
+    second = rt.load_calendar(cache, disk_cache=disk)
+    assert len(second) == len(first) == 3
+    monkeypatch.undo()
+
+    # A changed cache signature (one more file) must invalidate the json.
+    frame2 = pd.DataFrame({"close": [1.0]}, index=pd.to_datetime(["2026-01-08"]))
+    frame2.to_parquet(cache / "sh600001_raw.parquet")
+    rt._CALENDAR_CACHE.clear()
+    third = rt.load_calendar(cache, disk_cache=disk)
+    assert third.last == pd.Timestamp("2026-01-08").date()

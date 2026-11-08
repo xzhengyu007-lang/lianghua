@@ -1003,6 +1003,57 @@ def cmd_quote(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_advice(args: argparse.Namespace) -> int:
+    """Advice card: six elements, uncertainty on the same screen, hard freshness gate."""
+    from .advice import build_card, write_card
+    from .realtime import DEFAULT_STORE, SnapshotStore, previous_trading_day, refresh
+
+    panel = _panel_from_args(args)
+    today = pd.Timestamp(args.today) if args.today else pd.Timestamp.now().normalize()
+    last_trading = previous_trading_day(today.date())
+    benchmark = _benchmark(args)
+
+    board = None
+    if args.quotes:
+        store = SnapshotStore(args.store or DEFAULT_STORE)
+        symbols = [row for row in (args.symbols or [])]
+        if not symbols:
+            try:
+                signal_path = Path("reports") / "signal_today" / "orders.csv"
+                if signal_path.exists():
+                    symbols = list(pd.read_csv(signal_path, encoding="utf-8-sig")["symbol"])
+            except (KeyError, FileNotFoundError):
+                symbols = []
+        if symbols:
+            board = refresh(list(symbols), store=store)
+
+    ledger = None
+    if args.ledger:
+        ledger = Ledger.load(args.ledger)
+
+    card = build_card(
+        panel,
+        strategy=args.strategy,
+        params=json.loads(args.params) if args.params else None,
+        equity=args.equity,
+        quotes=board,
+        ledger=ledger,
+        today=today,
+        benchmark=benchmark,
+        band_bps=args.band_bps,
+        reports_dir=args.reports_dir,
+        last_trading_day=str(last_trading),
+    )
+    if args.json:
+        print(json.dumps(card.to_dict(), ensure_ascii=False, indent=2, default=str))
+    else:
+        print(card.markdown())
+    if args.output:
+        write_card(card, args.output)
+        print("-> %s (card.md / card.json / card.html)" % args.output)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aq", description="A-share quantitative system")
     parser.add_argument("--cache-dir", default=str(CACHE_DIR))
@@ -1274,6 +1325,26 @@ def build_parser() -> argparse.ArgumentParser:
                        help="seconds after which an in-session print counts as lagging")
     quote.add_argument("--output", default=None, help="also write the JSON payload here")
     quote.set_defaults(func=cmd_quote)
+    advice = sub.add_parser(
+        "advice",
+        help="executable advice card: six elements, uncertainty on screen, hard data gate",
+    )
+    advice.add_argument("--strategy", choices=sorted(STRATEGY_REGISTRY), default="low_vol_core")
+    advice.add_argument("--params")
+    advice.add_argument("--equity", type=float, default=1_000_000.0,
+                        help="account equity used for sizing (the card labels it as simulation)")
+    advice.add_argument("--today", default=None, help="override 'today' (YYYY-MM-DD) for replay/tests")
+    advice.add_argument("--quotes", action="store_true",
+                        help="attach live L1 quotes (price + timestamp + real limit band)")
+    advice.add_argument("--store", default=None, help="snapshot store used with --quotes")
+    advice.add_argument("--ledger", default=None, help="paper ledger JSON for T+1 sellable shares")
+    advice.add_argument("--band-bps", type=float, default=50.0,
+                        help="limit-price band around the executable price, in basis points")
+    advice.add_argument("--reports-dir", default=str(Path("reports")),
+                        help="where the uncertainty artifacts live")
+    advice.add_argument("--json", action="store_true")
+    advice.add_argument("--output", default=None, help="write card.md / card.json / card.html here")
+    advice.set_defaults(func=cmd_advice)
     return parser
 
 

@@ -33,6 +33,14 @@ class DailySignal:
     warnings: list[str] = field(default_factory=list)
     sizing_equity: float | None = None
     lot_size: int = 100
+    # When the target book last *changed*: recovered from the weights panel, so it
+    # is the strategy's own cadence and not a re-derived 20-day guess.
+    last_rebalance: pd.Timestamp | None = None
+    bars_since_rebalance: int | None = None
+    # How many names were actually eligible at ``as_of``: a percentile is
+    # meaningless without its denominator, and typing "129" into a template is
+    # exactly the hand-copied number this repo forbids.
+    pool_size: int | None = None
 
     @property
     def gross_exposure(self) -> float:
@@ -49,6 +57,9 @@ class DailySignal:
             "gross_exposure": round(self.gross_exposure, 6),
             "sizing_equity": self.sizing_equity,
             "lot_size": self.lot_size,
+            "last_rebalance": str(self.last_rebalance.date()) if self.last_rebalance is not None else None,
+            "bars_since_rebalance": self.bars_since_rebalance,
+            "pool_size": self.pool_size,
             "planned_notional": round(
                 float(self.rows["amount"].fillna(0.0).sum())
                 if len(self.rows) and "amount" in self.rows
@@ -163,11 +174,43 @@ def latest_signal(
     except (AttributeError, KeyError, NotImplementedError) as exc:  # pragma: no cover
         warnings.append(f"strategy score unavailable: {exc}")
 
+    # Everything the advice card needs to explain *why* a name is in the book:
+    # its percentile inside the eligible cross-section, how far it sits from its
+    # own trend line, and where it ranks inside its sector.  All of it is
+    # computed from bars at or before ``as_of`` -- none of it is a forecast.
+    pool = score_row.reindex(eligible_row.index).dropna() if eligible_row is not None else score_row
+    trend_window = int(getattr(strategy, "trend_window", params.get("trend_window", 120)) or 120)
+    trend_line = close.rolling(trend_window, min_periods=max(10, trend_window // 4)).mean()
+    sector_rank: dict[str, tuple[int, int]] = {}
+    if len(pool):
+        frame = pd.DataFrame({"score": pool})
+        frame["sector"] = [sector_of(s) for s in frame.index]
+        for _sector, group in frame.groupby("sector"):
+            ordered = group["score"].sort_values(ascending=False)
+            total = len(ordered)
+            for position, symbol in enumerate(ordered.index, start=1):
+                sector_rank[symbol] = (position, total)
+
     def _score_of(symbol: str) -> float | None:
         if symbol not in score_row.index:
             return None
         value = float(score_row.loc[symbol])
         return round(value, 4) if np.isfinite(value) else None
+
+    def _percentile(symbol: str) -> float | None:
+        if not len(pool) or symbol not in pool.index:
+            return None
+        value = float(pool.loc[symbol])
+        return round(float((pool < value).sum()) / float(len(pool)), 4)
+
+    def _trend_gap(symbol: str) -> float | None:
+        if symbol not in close or symbol not in trend_line:
+            return None
+        line = trend_line[symbol].loc[as_of]
+        price = close[symbol].loc[as_of]
+        if not np.isfinite(line) or line <= 0 or not np.isfinite(price):
+            return None
+        return round(float(price / line - 1.0), 4)
 
     for symbol, weight in target.items():
         price = float(close.loc[as_of, symbol]) if symbol in close else np.nan
@@ -188,6 +231,7 @@ def latest_signal(
         if abs(last_return) >= limit * 0.98:
             flags.append("limit_move")
             warnings.append(f"{symbol}: moved {last_return:+.2%} today, near the {limit:.0%} limit")
+        rank = sector_rank.get(symbol)
         rows.append(
             {
                 "symbol": symbol,
@@ -197,6 +241,10 @@ def latest_signal(
                 "shares": shares,
                 "amount": round(shares * price, 2) if np.isfinite(price) else None,
                 "score": _score_of(symbol),
+                "score_pct": _percentile(symbol),
+                "trend_gap": _trend_gap(symbol),
+                "trend_window": trend_window,
+                "sector_rank": "%d/%d" % rank if rank else None,
                 "flags": ",".join(flags),
             }
         )
@@ -229,6 +277,14 @@ def latest_signal(
             )
         else:
             warnings.append("no eligible names: the signal is 100% cash")
+    # When did the target book last change?  The weights panel is constant between
+    # rebalances, so a change in the weight vector *is* a rebalance -- read off the
+    # strategy's own cadence instead of re-deriving "every 20 days" here.
+    filled = weights.fillna(0.0)
+    changed = filled.diff().abs().sum(axis=1) > 1e-12
+    last_rebalance = weights.index[changed][-1] if changed.any() else weights.index[0]
+    bars_since = int(weights.index.get_loc(as_of) - weights.index.get_loc(last_rebalance))
+
     return DailySignal(
         as_of=as_of,
         strategy=strategy_name,
@@ -240,6 +296,9 @@ def latest_signal(
         warnings=warnings,
         sizing_equity=sizing_equity,
         lot_size=lot_size,
+        last_rebalance=last_rebalance,
+        bars_since_rebalance=bars_since,
+        pool_size=int(len(pool)),
     )
 
 

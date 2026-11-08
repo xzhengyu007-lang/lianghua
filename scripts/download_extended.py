@@ -123,7 +123,10 @@ def main(argv: list[str] | None = None) -> int:
         print("pass %d: %d pending" % (attempt, len(pending)), flush=True)
         streak = 0
         for symbol in pending:
-            if depth(cache, symbol) >= args.target_rows:
+            # Must use the same predicate as plan(); depth() counts any variant and
+            # would skip every symbol whose raw file is already deep, which is how
+            # 38 passes once ran without a single request.
+            if is_complete(cache, symbol, args.target_rows, args.adjust):
                 continue
             try:
                 result = provider.download(symbol, count=args.target_rows,
