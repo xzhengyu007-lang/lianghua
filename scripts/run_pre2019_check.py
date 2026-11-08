@@ -179,6 +179,14 @@ def main(argv: list[str] | None = None) -> int:
                        "子集口径（非 128 只），用于比较两个时期，不与生产数字对照。"}
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
+    # Daily returns are needed downstream (style regression), so persist them
+    # rather than making the next script re-run the whole blend.
+    (out.parent / "daily_returns.csv").write_text(
+        "date,return\n" + "\n".join(
+            "%s,%.10f" % (d.date(), v) for d, v in result.returns.items()
+        ) + "\n",
+        encoding="utf-8",
+    )
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=float),
                    encoding="utf-8")
 
