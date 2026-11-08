@@ -944,8 +944,10 @@ def cmd_quote(args: argparse.Namespace) -> int:
     """L1 snapshot quotes: execution and monitoring only, never research."""
     from .realtime import (
         DEFAULT_STORE,
+        GREEN,
+        QuotePoller,
         SnapshotStore,
-        TencentQuoteSource,
+        default_source,
         load_board,
         refresh,
         throttle_remainder,
@@ -953,6 +955,24 @@ def cmd_quote(args: argparse.Namespace) -> int:
 
     symbols = _quote_symbols(args)
     store = SnapshotStore(args.store or DEFAULT_STORE)
+
+    if args.watch:
+        poller = QuotePoller(
+            symbols,
+            source=default_source(cross_check=args.cross_check, attempts=args.attempts),
+            store=store,
+            interval=args.interval,
+            stale_after=args.stale_after,
+        )
+        try:
+            while True:
+                status = poller.tick()
+                print(f"[{status.state}] {status.message}", flush=True)
+                time.sleep(args.interval if status.state == GREEN else 1.0)
+        except KeyboardInterrupt:
+            print("\n已停止轮询（快照保留在 %s）" % store.path)
+        return 0
+
     if args.offline:
         board = load_board(symbols, store=store, stale_after=args.stale_after)
     else:
@@ -962,7 +982,7 @@ def cmd_quote(args: argparse.Namespace) -> int:
             time.sleep(owed)
         board = refresh(
             symbols,
-            source=TencentQuoteSource(attempts=args.attempts),
+            source=default_source(cross_check=args.cross_check, attempts=args.attempts),
             store=store,
             stale_after=args.stale_after,
         )
@@ -1238,6 +1258,18 @@ def build_parser() -> argparse.ArgumentParser:
     quote.add_argument("--json", action="store_true", help="print the JSON payload instead of a table")
     quote.add_argument("--store", default=None, help="sqlite snapshot store (default reports/realtime/quotes.sqlite)")
     quote.add_argument("--attempts", type=int, default=2, help="retries per batch before degrading")
+    quote.add_argument(
+        "--cross-check",
+        dest="cross_check",
+        action="store_true",
+        default=True,
+        help="also query Sina and flag a >0.5%% disagreement as suspect (default: on)",
+    )
+    quote.add_argument("--no-cross-check", dest="cross_check", action="store_false",
+                       help="single source only (halves the request volume)")
+    quote.add_argument("--watch", action="store_true",
+                       help="poll continuously and print the freshness state (Ctrl-C to stop)")
+    quote.add_argument("--interval", type=float, default=3.0, help="seconds between rounds in --watch")
     quote.add_argument("--stale-after", type=float, default=60.0,
                        help="seconds after which an in-session print counts as lagging")
     quote.add_argument("--output", default=None, help="also write the JSON payload here")

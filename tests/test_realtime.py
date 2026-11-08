@@ -10,6 +10,8 @@ silently lies to its user.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 import pytest
 
@@ -576,3 +578,328 @@ def test_empty_board_is_allowed_and_reports_the_reason() -> None:
     assert board.stale_symbols == [] and board.tradable == 0
     assert PriceLimit(0.1, 0.0, 0.0, "computed").to_dict()["source"] == "computed"
     assert _price(parse_payload(_payload(), fetched_at=TRADING_NOON)[0]) > 0
+
+
+# --------------------------------------------------------------------------- #
+# trading calendar from the cache (stage-1 gap ①)
+# --------------------------------------------------------------------------- #
+def _calendar(days: list[str], *, source: str = "test") -> "TradingCalendar":
+    from quant_system.realtime import TradingCalendar
+
+    return TradingCalendar([pd.Timestamp(d).date() for d in days], source=source)
+
+
+def test_calendar_drops_a_real_public_holiday() -> None:
+    """2026-10-01..10-07 is National Day; the cache has no bars there.
+
+    The weekday rule calls Thursday 2026-10-01 a session.  The cache is the
+    authority this repo already trusts, so the calendar must disagree with the
+    weekday rule exactly here.
+    """
+    from quant_system.realtime import load_calendar
+
+    calendar = load_calendar()
+    if len(calendar) < 100:  # pragma: no cover - a cache-less checkout
+        pytest.skip("no parquet cache to derive a calendar from")
+    assert calendar.covers(pd.Timestamp("2026-10-01").date())
+    assert calendar.is_trading_day(pd.Timestamp("2026-10-01").date()) is False
+    assert calendar.is_trading_day(pd.Timestamp("2026-10-08").date()) is True
+    assert calendar.previous_trading_day(pd.Timestamp("2026-10-08").date()) == pd.Timestamp(
+        "2026-09-30"
+    ).date()
+
+
+def test_a_holiday_is_closed_and_its_floor_is_the_previous_session() -> None:
+    day = "2026-10-01 10:00:00"  # National Day, a Thursday
+    assert session_state(pd.Timestamp(day, tz=CN_TZ)) == "closed"
+    floor, label = fresh_floor(pd.Timestamp(day, tz=CN_TZ))
+    assert floor == pd.Timestamp("2026-09-30 09:30:00", tz=CN_TZ)
+    assert label == "上一交易日收盘"
+
+
+def test_calendar_skips_a_multi_day_gap() -> None:
+    calendar = _calendar(["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-12"])
+    assert calendar.previous_trading_day(pd.Timestamp("2026-01-12").date()) == pd.Timestamp(
+        "2026-01-09"
+    ).date()
+    assert calendar.is_trading_day(pd.Timestamp("2026-01-10").date()) is False  # Saturday
+    assert calendar.is_trading_day(pd.Timestamp("2026-01-12").date()) is True
+
+
+def test_outside_its_coverage_the_calendar_falls_back_to_weekdays() -> None:
+    calendar = _calendar(["2026-01-05", "2026-01-06"])
+    assert calendar.covers(pd.Timestamp("2030-01-02").date()) is False
+    assert calendar.is_trading_day(pd.Timestamp("2030-01-02").date()) is True   # Wednesday
+    assert calendar.is_trading_day(pd.Timestamp("2030-01-05").date()) is False  # Saturday
+
+
+def test_calendar_is_rebuilt_after_the_ttl(tmp_path) -> None:
+    from quant_system.realtime import CALENDAR_TTL_SECONDS, load_calendar
+
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    frame = pd.DataFrame({"close": [1.0, 1.0, 1.0]}, index=pd.to_datetime(["2026-01-05", "2026-01-06", "2026-01-07"]))
+    frame.to_parquet(cache / "sh600000_raw.parquet")
+
+    clock = FakeClock(0.0)
+    first = load_calendar(cache, clock=clock.clock)
+    second = load_calendar(cache, clock=clock.clock)
+    assert first is second
+    assert first.last == pd.Timestamp("2026-01-07").date()
+    clock.t += CALENDAR_TTL_SECONDS + 1
+    frame.loc[pd.Timestamp("2026-01-08")] = 1.0
+    frame.to_parquet(cache / "sh600000_raw.parquet")
+    third = load_calendar(cache, clock=clock.clock)
+    assert third is not first
+    assert third.last == pd.Timestamp("2026-01-08").date()
+
+
+# --------------------------------------------------------------------------- #
+# snapshot store: WAL + retention (stage-1 gap ②)
+# --------------------------------------------------------------------------- #
+def test_store_uses_wal_so_readers_do_not_block_the_writer(tmp_path) -> None:
+    store = SnapshotStore(tmp_path / "quotes.sqlite")
+    with store._session() as conn:
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+
+
+def test_prune_keeps_the_first_and_last_row_of_old_days(tmp_path) -> None:
+    store = SnapshotStore(tmp_path / "quotes.sqlite", keep_days=1)
+    old_day = pd.Timestamp("2026-01-05 14:00:00", tz=CN_TZ)
+    for minutes in (0, 3, 6, 9, 12):
+        moment = old_day + pd.Timedelta(minutes=minutes)
+        store.save([parse_payload(_payload(), fetched_at=moment)[0]], run_at=moment, auto_prune=False)
+    today = TRADING_NOON
+    for minutes in (0, 3, 6):
+        moment = today + pd.Timedelta(minutes=minutes)
+        store.save([parse_payload(_payload(when="20261106135930"), fetched_at=moment)[0]], run_at=moment, auto_prune=False)
+
+    result = store.prune(now=TRADING_NOON + pd.Timedelta(days=1), keep_days=1)
+    assert result["deleted"] == 3  # 5 old rows -> first + last survive
+    history = store.history("sh600519", limit=50)
+    old_rows = history[history["fetched_at"].str.startswith("2026-01-05")]
+    assert len(old_rows) == 2
+    assert set(old_rows["fetched_at"]) == {
+        "2026-01-05T14:00:00+08:00",
+        "2026-01-05T14:12:00+08:00",
+    }
+    assert len(store.runs()) == 3  # the three runs of the retained day survive
+
+
+def test_save_prunes_at_most_once_per_day(tmp_path) -> None:
+    store = SnapshotStore(tmp_path / "quotes.sqlite", keep_days=0)
+    day_one = pd.Timestamp("2026-01-05 10:00:00", tz=CN_TZ)
+    for minutes in (0, 3, 6):
+        moment = day_one + pd.Timedelta(minutes=minutes)
+        store.save([parse_payload(_payload(), fetched_at=moment)[0]], run_at=moment)
+    assert len(store.history("sh600519", limit=50)) == 3
+    # The next day's first save prunes the old day down to first + last, then adds.
+    next_day = day_one + pd.Timedelta(days=1)
+    store.save([parse_payload(_payload(), fetched_at=next_day)[0]], run_at=next_day)
+    assert len(store.history("sh600519", limit=50)) == 3  # 2 for the old day + 1 new
+
+
+# --------------------------------------------------------------------------- #
+# second source + cross-check (stage-1 gap ③)
+# --------------------------------------------------------------------------- #
+def _sina_payload(
+    symbol: str = "sh600519",
+    *,
+    name: str = "贵州茅台",
+    price: float = 1453.0,
+    prev_close: float = 1452.0,
+    open_: float = 1450.0,
+    volume_shares: float = 4_284_772.0,
+    when: tuple[str, str] = ("2026-11-06", "13:59:30"),
+) -> str:
+    values = [""] * 34
+    values[0] = name
+    values[1] = "%.3f" % open_
+    values[2] = "%.3f" % prev_close
+    values[3] = "%.3f" % price
+    values[4] = "1457.720"
+    values[5] = "1436.000"
+    values[6] = "%.3f" % max(price - 1, 0.0)
+    values[7] = "%.3f" % max(price + 1, 0.0)
+    values[8] = "%.0f" % volume_shares
+    values[9] = "6199528289.000"
+    values[30] = when[0]
+    values[31] = when[1]
+    return 'var hq_str_%s="%s";' % (symbol, ",".join(values))
+
+
+def test_parse_sina_reads_price_book_and_time() -> None:
+    from quant_system.realtime import parse_sina_payload
+
+    quote = parse_sina_payload(_sina_payload(), fetched_at=TRADING_NOON)[0]
+    assert quote.price == pytest.approx(1453.0)
+    assert quote.prev_close == pytest.approx(1452.0)
+    assert quote.bid1 == pytest.approx(1452.0)
+    assert quote.ask1 == pytest.approx(1454.0)
+    assert quote.volume_lots == pytest.approx(42847.72)  # shares -> lots
+    assert quote.amount_wan == pytest.approx(619_952.83, rel=1e-4)  # 元 -> 万元
+    assert quote.quote_time == pd.Timestamp("2026-11-06 13:59:30", tz=CN_TZ)
+    assert quote.sources == ("sina",)
+
+
+def test_sina_reports_zero_for_a_suspended_name_and_we_never_print_0_00() -> None:
+    from quant_system.realtime import parse_sina_payload
+
+    payload = _sina_payload("sz002129", name="TCL中环", price=0.0, prev_close=9.38, open_=0.0, volume_shares=0.0)
+    quote = parse_sina_payload(payload, fetched_at=TRADING_NOON)[0]
+    assert quote.status in {"no_quote", "suspended"}
+    assert quote.can_buy is False and quote.can_sell is False
+    board = Board(quotes={quote.symbol: annotate(quote, now=TRADING_NOON)})
+    assert "| — |" in board.markdown(), board.markdown()
+
+
+class _FakeSource:
+    name = "fake"
+
+    def __init__(self, quotes, *, error: str | None = None) -> None:
+        self._quotes = list(quotes)
+        self.warnings: list[str] = []
+        self.retry_log: list[dict] = []
+        self.calls = 0
+        self._error = error
+
+    def fetch(self, symbols):
+        self.calls += 1
+        if self._error:
+            raise QuoteUnavailable(self._error)
+        return list(self._quotes), [], []
+
+
+def test_cross_check_flags_a_price_disagreement_as_suspect() -> None:
+    from quant_system.realtime import CrossCheckSource, parse_sina_payload
+
+    primary = _FakeSource([parse_payload(_payload(), fetched_at=TRADING_NOON)[0]])
+    secondary = _FakeSource([parse_sina_payload(_sina_payload(price=1400.0), fetched_at=TRADING_NOON)[0]])
+    source = CrossCheckSource(primary=primary, secondary=secondary)
+    quotes, missing, errors = source.fetch(["sh600519"])
+    assert errors == [] and missing == []
+    quote = quotes[0]
+    assert quote.suspect is True
+    assert quote.can_buy is False
+    assert "双源价差" in quote.message
+    assert quote.sources == ("tencent", "sina")
+
+
+def test_cross_check_accepts_a_small_gap() -> None:
+    from quant_system.realtime import CrossCheckSource, parse_sina_payload
+
+    primary = _FakeSource([parse_payload(_payload(), fetched_at=TRADING_NOON)[0]])
+    secondary = _FakeSource([parse_sina_payload(_sina_payload(price=1453.5), fetched_at=TRADING_NOON)[0]])
+    source = CrossCheckSource(primary=primary, secondary=secondary)
+    quote = source.fetch(["sh600519"])[0][0]
+    assert quote.suspect is False
+    assert quote.sources == ("tencent", "sina")
+    assert source.warnings == []
+
+
+def test_cross_check_warns_when_the_second_source_is_down() -> None:
+    from quant_system.realtime import CrossCheckSource
+
+    primary = _FakeSource([parse_payload(_payload(), fetched_at=TRADING_NOON)[0]])
+    secondary = _FakeSource([], error="新浪 HTTP 502")
+    source = CrossCheckSource(primary=primary, secondary=secondary)
+    quotes, missing, errors = source.fetch(["sh600519"])
+    assert len(quotes) == 1 and errors == []      # the desk still has a price
+    assert quotes[0].suspect is False
+    assert any("第二来源不可用" in w for w in source.warnings)
+
+
+def test_cross_check_falls_back_to_the_second_source() -> None:
+    from quant_system.realtime import CrossCheckSource, parse_sina_payload
+
+    primary = _FakeSource([], error="腾讯连接失败")
+    secondary = _FakeSource([parse_sina_payload(_sina_payload(), fetched_at=TRADING_NOON)[0]])
+    source = CrossCheckSource(primary=primary, secondary=secondary)
+    quotes, missing, errors = source.fetch(["sh600519"])
+    assert [q.symbol for q in quotes] == ["sh600519"]
+    assert quotes[0].sources == ("sina",)
+    assert any("回落到新浪" in w for w in source.warnings)
+    assert errors  # the primary failure is still reported
+
+
+def test_a_lost_second_source_is_a_warning_not_a_degradation(tmp_path) -> None:
+    from quant_system.realtime import CrossCheckSource
+
+    store = SnapshotStore(tmp_path / "quotes.sqlite")
+    source = CrossCheckSource(
+        primary=_FakeSource([parse_payload(_payload(when="20261106135930"), fetched_at=TRADING_NOON)[0]]),
+        secondary=_FakeSource([], error="新浪超时"),
+    )
+    board = refresh(["sh600519"], source=source, store=store, now=TRADING_NOON)
+    assert board.degraded is False
+    assert board.warnings and "第二来源不可用" in board.warnings[0]
+    assert board.quotes["sh600519"].can_buy is True
+
+
+def test_board_renders_a_suspect_name_with_a_marker() -> None:
+    from quant_system.realtime import parse_sina_payload
+
+    quote = parse_payload(_payload(), fetched_at=TRADING_NOON)[0]
+    marked = annotate(replace(quote, suspect=True), now=TRADING_NOON)
+    board = Board(quotes={marked.symbol: marked})
+    assert "⚠" in board.markdown()
+    assert board.suspect_symbols == ["sh600519"]
+    assert board.to_dict()["quotes"]["sh600519"]["suspect"] is True
+
+
+# --------------------------------------------------------------------------- #
+# poller: yellow on the first failure (stage-1 gap ④)
+# --------------------------------------------------------------------------- #
+def test_poller_starts_yellow_then_goes_green(tmp_path) -> None:
+    from quant_system.realtime import GREEN, QuotePoller
+
+    store = SnapshotStore(tmp_path / "quotes.sqlite")
+    source = _FakeSource([parse_payload(_payload(when="20261106135940"), fetched_at=TRADING_NOON)[0]])
+    poller = QuotePoller(
+        ["sh600519"], source=source, store=store, now=lambda: TRADING_NOON, interval=0.0
+    )
+    assert poller.status().state == "yellow"  # nothing fetched yet, and it says so
+    status = poller.tick()
+    assert status.state == GREEN
+    assert status.failures == 0
+    assert "可交易" in status.message
+    assert status.to_dict()["board"]["quotes"]["sh600519"]["price"] == pytest.approx(1453.0)
+
+
+def test_poller_turns_yellow_on_the_first_failure_and_red_after_the_threshold(tmp_path) -> None:
+    from quant_system.realtime import GREEN, RED, YELLOW, QuotePoller
+
+    store = SnapshotStore(tmp_path / "quotes.sqlite")
+    good = _FakeSource([parse_payload(_payload(when="20261106135940"), fetched_at=TRADING_NOON)[0]])
+    poller = QuotePoller(
+        ["sh600519"], source=good, store=store, now=lambda: TRADING_NOON, red_after=3
+    )
+    assert poller.tick().state == GREEN
+
+    poller._source = _FakeSource([], error="腾讯连接失败")
+    first = poller.tick()
+    assert first.state == YELLOW            # reacts on the first failure, no timeout wait
+    assert first.failures == 1
+    assert "重连中" in first.message
+    assert first.board is not None and first.board.quotes, "must still show the stored snapshot"
+    poller.tick()
+    third = poller.tick()
+    assert third.state == RED
+    assert "数据源不可用" in third.message
+
+
+def test_poller_thread_runs_rounds_and_stops(tmp_path) -> None:
+    import time as _time
+
+    from quant_system.realtime import QuotePoller
+
+    store = SnapshotStore(tmp_path / "quotes.sqlite")
+    source = _FakeSource([parse_payload(_payload(when="20261106135940"), fetched_at=TRADING_NOON)[0]])
+    poller = QuotePoller(
+        ["sh600519"], source=source, store=store, now=lambda: TRADING_NOON, interval=0.02
+    )
+    with poller:
+        _time.sleep(0.3)
+    assert source.calls >= 2
+    assert poller.status().rounds >= 2
+    assert poller._thread is None

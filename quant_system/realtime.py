@@ -58,9 +58,13 @@ Known limitations (stated, not hidden)
 
 from __future__ import annotations
 
+import bisect
 import json
 import sqlite3
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time as dtime, timedelta, timezone
 from pathlib import Path
@@ -126,28 +130,157 @@ def _as_ts(value: pd.Timestamp | datetime | str | None) -> pd.Timestamp:
     return ts.tz_localize(CN_TZ) if ts.tzinfo is None else ts.tz_convert(CN_TZ)
 
 
-def is_trading_day(day: date) -> bool:
-    """Mon-Fri. Holidays are deliberately not modelled -- see module docstring."""
-    return day.weekday() < 5
+class TradingCalendar:
+    """Trading days taken from the bar dates this repo already holds.
+
+    A "Mon-Fri" calendar is wrong exactly where it matters: on a public holiday
+    the desk would wait for a session that never opens, and after a holiday it
+    would treat the first real session as "the previous weekday".  The cache is a
+    free and authoritative-enough source: every ``*_raw.parquet`` / ``*_tr.parquet``
+    index *is* a list of sessions the exchange actually ran.
+
+    Coverage is what the sampled files contain (the strategy window, 2019-06
+    onwards, plus whatever delisted names add).  Outside that range the calendar
+    falls back to the weekday rule and says so instead of pretending.
+    """
+
+    def __init__(self, days: Iterable[date], *, source: str = "cache") -> None:
+        self._days = sorted({pd.Timestamp(day).date() for day in days})
+        self._set = set(self._days)
+        self.source = source
+
+    def __len__(self) -> int:
+        return len(self._days)
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        if not self._days:
+            return "TradingCalendar(empty)"
+        return "TradingCalendar(%s..%s, n=%d, %s)" % (
+            self._days[0], self._days[-1], len(self._days), self.source
+        )
+
+    @property
+    def first(self) -> date | None:
+        return self._days[0] if self._days else None
+
+    @property
+    def last(self) -> date | None:
+        return self._days[-1] if self._days else None
+
+    def covers(self, day: date) -> bool:
+        return bool(self._days) and self.first <= day <= self.last
+
+    def is_trading_day(self, day: date) -> bool:
+        """Membership in the cache when covered; weekday rule outside the range."""
+        if self.covers(day):
+            return day in self._set
+        return day.weekday() < 5
+
+    def previous_trading_day(self, day: date) -> date:
+        """Most recent session strictly before ``day``."""
+        if self._days and self.first < day <= self.last:
+            position = bisect.bisect_left(self._days, day)
+            if position > 0:
+                return self._days[position - 1]
+        cursor = day - timedelta(days=1)
+        while not self.is_trading_day(cursor):
+            cursor -= timedelta(days=1)
+        return cursor
+
+    def to_dict(self) -> dict:
+        return {
+            "source": self.source,
+            "days": len(self._days),
+            "first": str(self.first) if self.first else None,
+            "last": str(self.last) if self.last else None,
+        }
 
 
-def previous_trading_day(day: date) -> date:
-    cursor = day - timedelta(days=1)
-    while not is_trading_day(cursor):
-        cursor -= timedelta(days=1)
-    return cursor
+def weekday_calendar() -> TradingCalendar:
+    """Fallback used when no cache is readable: Mon-Fri, honestly labelled."""
+    days = [
+        pd.Timestamp("2000-01-03").date() + timedelta(days=offset)
+        for offset in range(0, 365 * 40)
+    ]
+    return TradingCalendar([d for d in days if d.weekday() < 5], source="weekday")
 
 
-def session_state(ts: pd.Timestamp | datetime | str | None = None) -> str:
+_CALENDAR_CACHE: dict[tuple[str, int], tuple[float, TradingCalendar]] = {}
+CALENDAR_TTL_SECONDS = 3600.0
+
+
+def load_calendar(
+    cache_dir: str | Path | None = None,
+    *,
+    max_files: int | None = None,
+    clock: Callable[[], float] = time.monotonic,
+    force: bool = False,
+) -> TradingCalendar:
+    """Build (and hour-cache) the session calendar from the parquet cache.
+
+    The union over **every** cached file is what makes this correct: sampling by
+    mtime looked cheap and was wrong -- the newest files are delisted names whose
+    history stops years ago, so the calendar silently ended at 2026-07-13 and a
+    holiday then fell back to "weekday, therefore open".  Reading all 536 indexes
+    costs ~1.1 s (index column only) and the result is cached for an hour, so the
+    desk pays it once per process-hour and never inside a 3 s round.
+
+    ``max_files`` exists for tests; production passes ``None`` (all files).
+    """
+    from .config import CACHE_DIR
+
+    directory = Path(cache_dir) if cache_dir is not None else Path(CACHE_DIR)
+    key = (str(directory), -1 if max_files is None else int(max_files))
+    cached = _CALENDAR_CACHE.get(key)
+    now = clock()
+    if cached is not None and not force and now - cached[0] < CALENDAR_TTL_SECONDS:
+        return cached[1]
+
+    files = sorted(list(directory.glob("*_raw.parquet")) + list(directory.glob("*_tr.parquet")))
+    if max_files is not None:
+        files = sorted(files, key=lambda path: path.stat().st_mtime, reverse=True)[
+            : max(1, int(max_files))
+        ]
+    days: set[date] = set()
+    for path in files:
+        try:
+            index = pd.read_parquet(path, columns=[]).index
+        except Exception:  # pragma: no cover - a corrupt cache is another audit's job
+            continue
+        days.update(pd.DatetimeIndex(index).normalize().date)
+    calendar = TradingCalendar(days, source="cache") if days else weekday_calendar()
+    _CALENDAR_CACHE[key] = (now, calendar)
+    return calendar
+
+
+def default_calendar() -> TradingCalendar:
+    try:
+        return load_calendar()
+    except Exception:  # pragma: no cover - never let a calendar blow up a quote
+        return weekday_calendar()
+
+
+def is_trading_day(day: date, *, calendar: TradingCalendar | None = None) -> bool:
+    """Is this an exchange session?  Cache-derived when possible."""
+    return (calendar or default_calendar()).is_trading_day(day)
+
+
+def previous_trading_day(day: date, *, calendar: TradingCalendar | None = None) -> date:
+    return (calendar or default_calendar()).previous_trading_day(day)
+
+
+def session_state(
+    ts: pd.Timestamp | datetime | str | None = None, *, calendar: TradingCalendar | None = None
+) -> str:
     """One of ``pre_open`` / ``auction`` / ``open`` / ``lunch`` / ``after_close`` / ``closed``.
 
-    ``closed`` means "no session today at all" (weekend).  The distinction
-    matters for staleness: outside a session the last price is *expected* to be
-    the previous close, so a naive "age > 60 s means broken" rule would cry wolf
-    every evening.
+    ``closed`` means "no session today at all" (weekend *or* public holiday).  The
+    distinction matters for staleness: outside a session the last price is
+    *expected* to be the previous close, so a naive "age > 60 s means broken" rule
+    would cry wolf every evening and every holiday.
     """
     ts = _as_ts(ts)
-    if not is_trading_day(ts.date()):
+    if not is_trading_day(ts.date(), calendar=calendar):
         return "closed"
     clock = ts.time()
     if clock < AUCTION_START:
@@ -173,7 +306,9 @@ SESSION_LABELS = {
 }
 
 
-def fresh_floor(ts: pd.Timestamp | datetime | str | None = None) -> tuple[pd.Timestamp, str]:
+def fresh_floor(
+    ts: pd.Timestamp | datetime | str | None = None, *, calendar: TradingCalendar | None = None
+) -> tuple[pd.Timestamp, str]:
     """Earliest quote timestamp that may still count as current at ``ts``.
 
     Returns ``(floor, label)``.  A quote older than ``floor`` is stale by
@@ -181,7 +316,7 @@ def fresh_floor(ts: pd.Timestamp | datetime | str | None = None) -> tuple[pd.Tim
     of separating "when we asked" from "when the exchange printed it".
     """
     ts = _as_ts(ts)
-    state = session_state(ts)
+    state = session_state(ts, calendar=calendar)
     today = ts.date()
     if state in {"open", "lunch"}:
         floor = pd.Timestamp(datetime.combine(today, SESSION_MORNING[0]), tz=CN_TZ)
@@ -192,7 +327,7 @@ def fresh_floor(ts: pd.Timestamp | datetime | str | None = None) -> tuple[pd.Tim
     if state == "after_close":
         floor = pd.Timestamp(datetime.combine(today, SESSION_MORNING[0]), tz=CN_TZ)
         return floor, "今日收盘"
-    previous = previous_trading_day(today)
+    previous = previous_trading_day(today, calendar=calendar)
     floor = pd.Timestamp(datetime.combine(previous, SESSION_MORNING[0]), tz=CN_TZ)
     return floor, "上一交易日收盘"
 
@@ -303,6 +438,8 @@ class Quote:
     stale: bool = False
     age_seconds: float = 0.0
     message: str = ""
+    suspect: bool = False
+    sources: tuple[str, ...] = ("tencent",)
 
     @property
     def change_pct(self) -> float:
@@ -312,13 +449,13 @@ class Quote:
 
     @property
     def can_buy(self) -> bool:
-        """A stale or limit-up or suspended name cannot be bought right now."""
-        return self.status == "normal" and not self.stale
+        """A stale, suspect, limit-up or suspended name cannot be bought now."""
+        return self.status == "normal" and not self.stale and not self.suspect
 
     @property
     def can_sell(self) -> bool:
         """Selling into a limit-up is possible; selling a suspended name is not."""
-        return self.status in {"normal", "limit_up"} and not self.stale
+        return self.status in {"normal", "limit_up"} and not self.stale and not self.suspect
 
     def to_dict(self) -> dict:
         return {
@@ -340,6 +477,8 @@ class Quote:
             "status": self.status,
             "status_label": STATUS_LABELS.get(self.status, self.status),
             "stale": bool(self.stale),
+            "suspect": bool(self.suspect),
+            "sources": list(self.sources),
             "age_seconds": round(float(self.age_seconds), 1),
             "can_buy": self.can_buy,
             "can_sell": self.can_sell,
@@ -397,14 +536,19 @@ def _classify(price: float, open_: float, volume_lots: float, limit: PriceLimit,
     return "normal"
 
 
-def parse_payload(text: str, *, fetched_at: pd.Timestamp | None = None) -> list[Quote]:
+def parse_payload(
+    text: str,
+    *,
+    fetched_at: pd.Timestamp | None = None,
+    calendar: TradingCalendar | None = None,
+) -> list[Quote]:
     """Parse a snapshot payload into quotes. Pure: no network, no clock guesses.
 
     Malformed symbols are skipped rather than zero-filled: a name we cannot read
     is reported as missing by the caller, never as a 0.00 price.
     """
     fetched = _as_ts(fetched_at)
-    state = session_state(fetched)
+    state = session_state(fetched, calendar=calendar)
     quotes: list[Quote] = []
     for chunk in str(text or "").split(";"):
         chunk = chunk.strip()
@@ -457,7 +601,8 @@ def parse_payload(text: str, *, fetched_at: pd.Timestamp | None = None) -> list[
 
 
 def annotate(quote: Quote, *, now: pd.Timestamp | datetime | str | None = None,
-             stale_after: float = STALE_AFTER_SECONDS) -> Quote:
+             stale_after: float = STALE_AFTER_SECONDS,
+             calendar: TradingCalendar | None = None) -> Quote:
     """Stamp freshness onto a quote.  This is the only place ``stale`` is decided.
 
     Two independent tests, because either one alone is wrong:
@@ -468,8 +613,8 @@ def annotate(quote: Quote, *, now: pd.Timestamp | datetime | str | None = None,
     """
     moment = _as_ts(now)
     age = float((moment - quote.quote_time).total_seconds())
-    floor, floor_label = fresh_floor(moment)
-    state = session_state(moment)
+    floor, floor_label = fresh_floor(moment, calendar=calendar)
+    state = session_state(moment, calendar=calendar)
     stale = quote.quote_time < floor or (state == "open" and age > float(stale_after))
     if stale:
         minutes = max(1.0, age / 60.0)
@@ -656,6 +801,225 @@ class TencentQuoteSource:
 
 
 # --------------------------------------------------------------------------- #
+# second source: Sina, for cross-checking the free feed
+# --------------------------------------------------------------------------- #
+SINA_URL = "https://hq.sinajs.cn/list="
+_SINA_HEADERS = {
+    "Referer": "https://finance.sina.com.cn/",  # Sina 403s without a finance referer
+    "User-Agent": _HEADERS["User-Agent"],
+}
+
+
+def sina_transport(
+    url: str, *, timeout: tuple[float, float] = (CONNECT_TIMEOUT, READ_TIMEOUT)
+) -> bytes:
+    import requests
+
+    try:
+        response = requests.get(url, timeout=timeout, headers=_SINA_HEADERS)
+    except Exception as exc:
+        raise QuoteUnavailable(f"新浪请求失败：{exc}") from exc
+    if response.status_code >= 400:
+        raise QuoteUnavailable(f"新浪 HTTP {response.status_code}")
+    return response.content
+
+
+def parse_sina_payload(
+    text: str,
+    *,
+    fetched_at: pd.Timestamp | None = None,
+    calendar: TradingCalendar | None = None,
+) -> list[Quote]:
+    """Parse ``var hq_str_sh600519="名称,今开,昨收,现价,...";`` (verified 2026-11-09).
+
+    Field map (0-based, comma separated)::
+
+        0 name   1 open   2 prev_close   3 last   4 high   5 low
+        6 bid1   7 ask1   8 volume(股)   9 amount(元)   10..29 five levels
+        30 date (yyyy-mm-dd)   31 time (HH:MM:SS)   32 flag   33 extra
+
+    **A suspended name really does print 0 here** (002129 on 2026-11-06: last=0,
+    volume=0) while Tencent prints yesterday's close.  Zero is therefore parsed as
+    "no quote", never as a price: ``Board.markdown`` renders it as ``—`` so a
+    missing price cannot masquerade as a 0.00 print.
+    """
+    fetched = _as_ts(fetched_at)
+    state = session_state(fetched, calendar=calendar)
+    quotes: list[Quote] = []
+    for chunk in str(text or "").split(";"):
+        chunk = chunk.strip()
+        if "=" not in chunk:
+            continue
+        head, _, body = chunk.partition("=")
+        symbol = head.strip().removeprefix("var hq_str_")
+        if not symbol or not body.strip().startswith('"'):
+            continue
+        fields = body.strip().strip('"').split(",")
+        if len(fields) < 32:
+            continue
+        price = _float(fields, 3)
+        prev_close = _float(fields, 2)
+        open_ = _float(fields, 1)
+        volume_shares = _float(fields, 8)
+        name = fields[0]
+        date_text, time_text = fields[30], fields[31]
+        try:
+            quote_time = pd.Timestamp(f"{date_text} {time_text}", tz=CN_TZ)
+        except (ValueError, TypeError):
+            quote_time = fetched
+        limit = price_limit(symbol, name, prev_close)
+        status = _classify(
+            price,
+            0.0 if price <= 0 else open_,
+            volume_shares,
+            limit,
+            state,
+        )
+        quotes.append(
+            Quote(
+                symbol=normalize_symbol(symbol),
+                name=name,
+                price=price,
+                prev_close=prev_close,
+                open=open_,
+                high=_float(fields, 4),
+                low=_float(fields, 5),
+                volume_lots=round(volume_shares / 100.0, 2),  # 股 -> 手, to match Tencent
+                amount_wan=round(_float(fields, 9) / 10_000.0, 2),  # 元 -> 万元
+                bid1=_float(fields, 6),
+                ask1=_float(fields, 7),
+                quote_time=quote_time,
+                fetched_at=fetched,
+                limit=limit,
+                status=status,
+                message=STATUS_LABELS.get(status, status),
+                sources=("sina",),
+            )
+        )
+    return quotes
+
+
+class SinaQuoteSource(TencentQuoteSource):
+    """Same batching/throttle/backoff contract, different endpoint and parser."""
+
+    name = "sina"
+
+    def __init__(self, **kwargs) -> None:
+        kwargs.setdefault("transport", sina_transport)
+        super().__init__(**kwargs)
+        self._url = SINA_URL
+
+    def _fetch_batch(self, batch: Sequence[str]) -> list[Quote]:
+        symbols = [normalize_symbol(s) for s in batch]
+        url = SINA_URL + ",".join(symbols)
+
+        def once() -> list[Quote]:
+            self._limiter.acquire()
+            payload = self._transport(url, timeout=self.timeout)
+            text = payload.decode("gbk", errors="replace") if isinstance(payload, bytes) else str(payload)
+            if not text.strip():
+                raise QuoteUnavailable("新浪返回内容为空")
+            quotes = parse_sina_payload(text)
+            if not quotes:
+                raise QuoteUnavailable("新浪返回内容无法解析")
+            return quotes
+
+        return with_backoff(
+            once,
+            attempts=self.attempts,
+            base=self.base_wait,
+            max_wait=self.max_wait,
+            sleep=self._sleep,
+            on_retry=lambda attempt, wait, exc: self.retry_log.append(
+                {"attempt": attempt, "wait": wait, "error": str(exc), "symbols": len(symbols)}
+            ),
+        )
+
+
+class CrossCheckSource:
+    """Two free feeds, one verdict: disagreement becomes ``suspect``.
+
+    Design rules, learned from what the two feeds actually do:
+
+    * Compare **prices only** -- Sina reports volume in 股 and amount in 元 while
+      Tencent uses 手 and 万元, so a unit-blind diff would flag every name.
+    * ``0`` means "no quote on this feed" (suspended), not "price is zero": such a
+      name is skipped by the comparison instead of being flagged.
+    * If one feed is down the other still answers the round, and the switch is
+      reported as a **warning**, not an error: the desk has a usable price, it
+      just lost its second opinion.
+    """
+
+    name = "tencent+sina"
+
+    def __init__(
+        self,
+        primary=None,
+        secondary=None,
+        *,
+        tolerance: float = 0.005,
+    ) -> None:
+        self.primary = primary or TencentQuoteSource()
+        self.secondary = secondary or SinaQuoteSource()
+        self.tolerance = float(tolerance)
+        self.warnings: list[str] = []
+        self.retry_log: list[dict] = []
+
+    def fetch(self, symbols: Iterable[str]) -> tuple[list[Quote], list[str], list[str]]:
+        requested = [normalize_symbol(s) for s in symbols]
+        self.warnings = []
+        # Both feeds in parallel: sequentially, a dead primary plus a dead second
+        # source would cost the sum of both retry budgets (~7.5 s) and blow the 5 s
+        # "degraded is visible" SLA.  Concurrently the round costs the slower one.
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="quote-src") as pool:
+            primary_future = pool.submit(self.primary.fetch, requested)
+            secondary_future = pool.submit(self.secondary.fetch, requested)
+            try:
+                quotes, missing, errors = primary_future.result()
+            except QuoteError as exc:
+                # The real sources degrade per batch and never raise, but a source
+                # that does raise must not take the round down with it.
+                quotes, missing, errors = [], requested, [str(exc)]
+            try:
+                other, _, other_errors = secondary_future.result()
+            except QuoteError as exc:
+                other, other_errors = [], [str(exc)]
+
+        if not quotes and other:
+            self.warnings.append("腾讯不可用，本轮回落到新浪（单一来源，未做交叉校验）")
+            return other, [s for s in requested if s not in {q.symbol for q in other}], errors
+
+        if not other:
+            reason = other_errors[0] if other_errors else "无返回"
+            self.warnings.append(f"第二来源不可用，本轮无交叉校验：{reason}")
+            return quotes, missing, errors
+
+        by_symbol = {q.symbol: q for q in other}
+        merged: list[Quote] = []
+        for quote in quotes:
+            twin = by_symbol.get(quote.symbol)
+            if twin is None or quote.price <= 0 or twin.price <= 0:
+                merged.append(quote)
+                continue
+            gap = abs(quote.price / twin.price - 1.0)
+            if gap > self.tolerance:
+                merged.append(
+                    replace(
+                        quote,
+                        suspect=True,
+                        sources=("tencent", "sina"),
+                        message=(
+                            f"{quote.message}；双源价差 {gap:.2%}"
+                            f"（腾讯 {quote.price:.2f} / 新浪 {twin.price:.2f}）"
+                        ),
+                    )
+                )
+            else:
+                merged.append(replace(quote, sources=("tencent", "sina")))
+        return merged, missing, errors
+
+
+# --------------------------------------------------------------------------- #
 # snapshot store
 # --------------------------------------------------------------------------- #
 _SCHEMA = """
@@ -688,6 +1052,10 @@ CREATE TABLE IF NOT EXISTS fetch_runs (
     returned  INTEGER,
     errors    TEXT
 );
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
 """
 
 
@@ -699,16 +1067,81 @@ class SnapshotStore:
     difference between degrading honestly and inventing a number.
     """
 
-    def __init__(self, path: str | Path = DEFAULT_STORE) -> None:
+    def __init__(self, path: str | Path = DEFAULT_STORE, *, keep_days: int = 60) -> None:
         self.path = Path(path)
+        self.keep_days = int(keep_days)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as conn:
+        with self._session() as conn:
             conn.executescript(_SCHEMA)
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.path))
+        conn = sqlite3.connect(str(self.path), timeout=5.0)
         conn.row_factory = sqlite3.Row
+        # WAL: the desk writes a row every 3 s while the UI reads -- without it a
+        # reader blocks the writer and the quote loop stutters.  Persisted by the
+        # database, so setting it once is enough (it stays in the file header).
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         return conn
+
+    @contextmanager
+    def _session(self):
+        """Open, commit, **close**.  A 3 s poll loop must not leak file handles."""
+        conn = self._connect()
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _meta_get(conn: sqlite3.Connection, key: str) -> str | None:
+        row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return None if row is None else row["value"]
+
+    @staticmethod
+    def _meta_set(conn: sqlite3.Connection, key: str, value: str) -> None:
+        conn.execute("INSERT OR REPLACE INTO meta VALUES (?,?)", (key, value))
+
+    def prune(self, *, now: pd.Timestamp | datetime | str | None = None,
+              keep_days: int | None = None) -> dict:
+        """Bound the table that a 3 s poll loop would otherwise grow forever.
+
+        Inside the retention window every row is kept (the intraday path is the
+        interesting part for "what did the desk see at 10:31?").  Older days keep
+        only their first and last row, so the daily open and close survive for
+        accounting while the middle of those days is dropped.
+        """
+        moment = _as_ts(now)
+        days = int(self.keep_days if keep_days is None else keep_days)
+        cutoff = str((moment - pd.Timedelta(days=days)).date())
+        with self._session() as conn:
+            result = self._prune_in(conn, cutoff)
+            self._meta_set(conn, "last_prune", str(moment.date()))
+        return result
+
+    @staticmethod
+    def _prune_in(conn: sqlite3.Connection, cutoff: str) -> dict:
+        before = conn.execute("SELECT COUNT(*) AS n FROM quotes").fetchone()["n"]
+        conn.execute(
+            """
+            DELETE FROM quotes WHERE rowid IN (
+                SELECT rowid FROM (
+                    SELECT rowid,
+                           ROW_NUMBER() OVER (PARTITION BY symbol, substr(fetched_at, 1, 10)
+                                              ORDER BY fetched_at ASC)  AS first_rank,
+                           ROW_NUMBER() OVER (PARTITION BY symbol, substr(fetched_at, 1, 10)
+                                              ORDER BY fetched_at DESC) AS last_rank
+                    FROM quotes WHERE substr(fetched_at, 1, 10) < ?
+                ) WHERE first_rank > 1 AND last_rank > 1
+            )
+            """,
+            (cutoff,),
+        )
+        conn.execute("DELETE FROM fetch_runs WHERE substr(run_at, 1, 10) < ?", (cutoff,))
+        after = conn.execute("SELECT COUNT(*) AS n FROM quotes").fetchone()["n"]
+        return {"deleted": int(before - after), "kept": int(after), "cutoff": cutoff}
 
     def save(
         self,
@@ -717,6 +1150,7 @@ class SnapshotStore:
         run_at: pd.Timestamp | None = None,
         requested: int | None = None,
         errors: Sequence[str] = (),
+        auto_prune: bool = True,
     ) -> int:
         moment = _as_ts(run_at)
         rows = [
@@ -728,7 +1162,7 @@ class SnapshotStore:
             )
             for q in quotes
         ]
-        with self._connect() as conn:
+        with self._session() as conn:
             conn.executemany(
                 "INSERT OR REPLACE INTO quotes VALUES (%s)" % ",".join("?" * 19), rows
             )
@@ -736,6 +1170,11 @@ class SnapshotStore:
                 "INSERT OR REPLACE INTO fetch_runs VALUES (?,?,?,?)",
                 (moment.isoformat(), int(requested or len(rows)), len(rows), json.dumps(list(errors), ensure_ascii=False)),
             )
+            # At most one prune per calendar day: the DELETE is cheap but pointless
+            # to run 4800 times between the open and the close.
+            if auto_prune and self._meta_get(conn, "last_prune") != str(moment.date()):
+                self._prune_in(conn, str((moment - pd.Timedelta(days=self.keep_days)).date()))
+                self._meta_set(conn, "last_prune", str(moment.date()))
         return len(rows)
 
     def latest(self, symbols: Iterable[str] | None = None) -> dict[str, Quote]:
@@ -751,12 +1190,12 @@ class SnapshotStore:
                 return {}
             query += " AND symbol IN (%s)" % ",".join("?" * len(wanted))
             params.extend(wanted)
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(query + " ORDER BY symbol", params).fetchall()
         return {row["symbol"]: self._to_quote(row) for row in rows}
 
     def history(self, symbol: str, limit: int = 50) -> pd.DataFrame:
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(
                 "SELECT * FROM quotes WHERE symbol = ? ORDER BY fetched_at DESC LIMIT ?",
                 (normalize_symbol(symbol), int(limit)),
@@ -766,14 +1205,14 @@ class SnapshotStore:
         return pd.DataFrame([dict(row) for row in rows])
 
     def runs(self, limit: int = 20) -> pd.DataFrame:
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(
                 "SELECT * FROM fetch_runs ORDER BY run_at DESC LIMIT ?", (int(limit),)
             ).fetchall()
         return pd.DataFrame([dict(row) for row in rows])
 
     def last_run_at(self) -> pd.Timestamp | None:
-        with self._connect() as conn:
+        with self._session() as conn:
             row = conn.execute("SELECT MAX(run_at) AS last FROM fetch_runs").fetchone()
         if row is None or row["last"] is None:
             return None
@@ -816,6 +1255,7 @@ class Board:
     fetched_at: pd.Timestamp | None = None
     errors: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     degraded: bool = False
     source: str = "tencent"
     session: str = "unknown"
@@ -827,6 +1267,10 @@ class Board:
     @property
     def tradable(self) -> int:
         return sum(1 for q in self.quotes.values() if q.status == "normal" and not q.stale)
+
+    @property
+    def suspect_symbols(self) -> list[str]:
+        return sorted(s for s, q in self.quotes.items() if q.suspect)
 
     @property
     def fresh_ratio(self) -> float:
@@ -844,6 +1288,7 @@ class Board:
             "source": self.source,
             "degraded": bool(self.degraded),
             "errors": list(self.errors),
+            "warnings": list(self.warnings),
             "missing": list(self.missing),
             "stale_symbols": self.stale_symbols,
             "tradable": self.tradable,
@@ -856,12 +1301,19 @@ class Board:
         rule = "|---|---|---:|---:|---|---|---|"
         lines = [header, rule]
         for symbol, q in sorted(self.quotes.items()):
+            # A feed that reports no price must render as "—", never as "0.00".
+            price = "—" if q.status == "no_quote" or q.price <= 0 else "%.2f" % q.price
+            book = (
+                "—/—"
+                if q.bid1 <= 0 and q.ask1 <= 0
+                else "%.2f/%.2f" % (q.bid1, q.ask1)
+            )
+            status = STATUS_LABELS.get(q.status, q.status)
+            if q.suspect:
+                status += "⚠"
             lines.append(
-                "| %s | %s | %.2f | %+.2f%% | %s | %.2f/%.2f | %s |"
-                % (
-                    symbol, q.name, q.price, q.change_pct,
-                    STATUS_LABELS.get(q.status, q.status), q.bid1, q.ask1, q.message,
-                )
+                "| %s | %s | %s | %+.2f%% | %s | %s | %s |"
+                % (symbol, q.name, price, q.change_pct, status, book, q.message)
             )
         summary = "行情 %d 只｜可交易 %d 只｜滞后 %d 只｜%s" % (
             len(self.quotes), self.tradable, len(self.stale_symbols),
@@ -869,6 +1321,10 @@ class Board:
         )
         if self.degraded:
             summary += "｜**已降级**：" + "；".join(self.errors or ["数据源不可用"])
+        if self.warnings:
+            summary += "｜提示：" + "；".join(self.warnings)
+        if self.suspect_symbols:
+            summary += "｜⚠ 双源不一致：" + ",".join(self.suspect_symbols)
         if self.missing:
             summary += "｜缺报价：" + ",".join(sorted(self.missing)[:8])
         return "\n".join(lines) + "\n\n" + summary + "\n"
@@ -881,6 +1337,7 @@ def refresh(
     store: SnapshotStore | None = None,
     now: pd.Timestamp | datetime | str | None = None,
     stale_after: float = STALE_AFTER_SECONDS,
+    calendar: TradingCalendar | None = None,
 ) -> Board:
     """One refresh round: fetch, annotate, persist, and degrade loudly.
 
@@ -892,22 +1349,35 @@ def refresh(
     moment = _as_ts(now)
     wanted = [normalize_symbol(s) for s in symbols]
     src = source or TencentQuoteSource()
-    board = Board(fetched_at=moment, source=getattr(src, "name", "tencent"), session=session_state(moment))
+    board = Board(
+        fetched_at=moment,
+        source=getattr(src, "name", "tencent"),
+        session=session_state(moment, calendar=calendar),
+    )
     try:
         quotes, missing, errors = src.fetch(wanted)
     except QuoteError as exc:  # defensive: fetch() already degrades per batch
         quotes, missing, errors = [], wanted, [str(exc)]
 
-    annotated = {q.symbol: annotate(q, now=moment, stale_after=stale_after) for q in quotes}
+    annotated = {
+        q.symbol: annotate(q, now=moment, stale_after=stale_after, calendar=calendar)
+        for q in quotes
+    }
     board.missing = list(missing)
     board.errors = list(errors)
+    # A lost second source is a warning, not a degradation: the desk still has a
+    # usable price, it just lost its cross-check.
+    board.warnings = list(getattr(src, "warnings", []) or [])
 
     if annotated:
         board.quotes = annotated
     elif store is not None:
         stored = store.latest(wanted)
         if stored:
-            board.quotes = {s: annotate(q, now=moment, stale_after=stale_after) for s, q in stored.items()}
+            board.quotes = {
+                s: annotate(q, now=moment, stale_after=stale_after, calendar=calendar)
+                for s, q in stored.items()
+            }
             board.errors.append("数据源不可用：以下为本地最后快照，价格已按真实时间标注为滞后")
 
     # "Degraded" means the round itself is untrustworthy -- a source failure or a
@@ -927,13 +1397,17 @@ def load_board(
     store: SnapshotStore | None = None,
     now: pd.Timestamp | datetime | str | None = None,
     stale_after: float = STALE_AFTER_SECONDS,
+    calendar: TradingCalendar | None = None,
 ) -> Board:
     """Offline board from the local store -- what the desk shows with no network."""
     moment = _as_ts(now)
     destination = store or SnapshotStore()
     stored = destination.latest(symbols)
     board = Board(
-        quotes={s: annotate(q, now=moment, stale_after=stale_after) for s, q in stored.items()},
+        quotes={
+            s: annotate(q, now=moment, stale_after=stale_after, calendar=calendar)
+            for s, q in stored.items()
+        },
         fetched_at=moment,
         source="store",
         session=session_state(moment),
@@ -966,3 +1440,164 @@ def throttle_remainder(
         return 0.0
     gap = float((_as_ts(now) - last).total_seconds())
     return max(0.0, float(min_interval) - gap)
+
+
+# --------------------------------------------------------------------------- #
+# poller: the desk's 3 s loop, and a badge that must not wait for a timeout
+# --------------------------------------------------------------------------- #
+GREEN, YELLOW, RED = "green", "yellow", "red"
+
+
+def default_source(*, cross_check: bool = True, attempts: int = DEFAULT_ATTEMPTS):
+    """Tencent, optionally cross-checked against Sina (two free feeds)."""
+    primary = TencentQuoteSource(attempts=attempts)
+    if not cross_check:
+        return primary
+    return CrossCheckSource(primary=primary, secondary=SinaQuoteSource(attempts=attempts))
+
+
+@dataclass
+class PollerStatus:
+    """What the top badge shows.  Status is a *state machine*, not a last error."""
+
+    state: str = YELLOW
+    message: str = "尚未取到行情"
+    failures: int = 0
+    rounds: int = 0
+    last_success: pd.Timestamp | None = None
+    board: Board | None = None
+
+    @property
+    def fresh_ratio(self) -> float:
+        return self.board.fresh_ratio if self.board is not None else 0.0
+
+    def to_dict(self) -> dict:
+        return {
+            "state": self.state,
+            "message": self.message,
+            "failures": self.failures,
+            "rounds": self.rounds,
+            "fresh_ratio": self.fresh_ratio,
+            "last_success": self.last_success.isoformat() if self.last_success is not None else None,
+            "board": self.board.to_dict() if self.board is not None else None,
+        }
+
+
+class QuotePoller:
+    """One background thread, one round per interval, and a badge that reacts at once.
+
+    A synchronous :func:`refresh` can spend up to ~4.5 s proving the feed is dead.
+    The desk cannot show a green badge for those seconds, so this poller publishes
+    **yellow as soon as a round fails** (or when the newest print is older than two
+    intervals) and only escalates to red after ``red_after`` consecutive failures.
+    Retries use a shorter cadence than the steady-state interval: the goal is to be
+    back to green quickly once the feed returns, not to poll harder while it works.
+    """
+
+    def __init__(
+        self,
+        symbols: Iterable[str],
+        *,
+        source=None,
+        store: SnapshotStore | None = None,
+        interval: float = REFRESH_MIN_INTERVAL,
+        retry_interval: float = 1.0,
+        red_after: int = 5,
+        stale_after: float = STALE_AFTER_SECONDS,
+        calendar: TradingCalendar | None = None,
+        now: Callable[[], pd.Timestamp] = now_cn,
+        attempts: int = 1,
+        cross_check: bool = True,
+    ) -> None:
+        self.symbols = [normalize_symbol(s) for s in symbols]
+        self._source = source or default_source(cross_check=cross_check, attempts=attempts)
+        self._store = store
+        self.interval = float(interval)
+        self.retry_interval = float(retry_interval)
+        self.red_after = max(1, int(red_after))
+        self.stale_after = float(stale_after)
+        self._calendar = calendar
+        self._now = now
+        self._status = PollerStatus()
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    # ---------- one round ---------------------------------------------------
+    def tick(self) -> PollerStatus:
+        moment = self._now()
+        board = refresh(
+            self.symbols,
+            source=self._source,
+            store=self._store,
+            now=moment,
+            stale_after=self.stale_after,
+            calendar=self._calendar,
+        )
+        with self._lock:
+            rounds = self._status.rounds + 1
+            if board.degraded:
+                failures = self._status.failures + 1
+                reason = board.errors[0] if board.errors else "数据源不可用"
+                if failures >= self.red_after:
+                    state = RED
+                    message = f"数据源不可用（连续 {failures} 轮失败）：{reason}；显示本地最后快照"
+                else:
+                    state = YELLOW
+                    message = f"重连中（第 {failures} 次失败）：{reason}"
+                self._status = PollerStatus(
+                    state=state,
+                    message=message,
+                    failures=failures,
+                    rounds=rounds,
+                    last_success=self._status.last_success,
+                    board=board,
+                )
+            else:
+                message = (
+                    f"行情正常（{board.tradable}/{len(board.quotes)} 只可交易）"
+                    if board.fresh_ratio >= 0.9
+                    else f"{len(board.stale_symbols)} 只标的滞后，其余正常"
+                )
+                self._status = PollerStatus(
+                    state=GREEN if board.fresh_ratio >= 0.9 else YELLOW,
+                    message=message,
+                    failures=0,
+                    rounds=rounds,
+                    last_success=moment,
+                    board=board,
+                )
+        return self._status
+
+    def status(self) -> PollerStatus:
+        with self._lock:
+            return self._status
+
+    # ---------- thread ------------------------------------------------------
+    def _run(self) -> None:  # pragma: no cover - exercised by one integration test
+        while not self._stop.is_set():
+            status = self.tick()
+            delay = self.interval if status.state == GREEN else self.retry_interval
+            if self._stop.wait(delay):
+                break
+
+    def start(self) -> "QuotePoller":
+        if self._thread is not None:
+            return self
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, name="quote-poller", daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self, *, timeout: float = 2.0) -> None:
+        self._stop.set()
+        thread = self._thread
+        self._thread = None
+        if thread is not None:
+            thread.join(timeout=timeout)
+
+    def __enter__(self) -> "QuotePoller":
+        return self.start()
+
+    def __exit__(self, *exc_info) -> None:
+        self.stop()
