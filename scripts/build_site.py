@@ -830,6 +830,29 @@ def page_evidence(ctx) -> str:
             "符号检验在本样本量的检出力是 %.0f%%（Sharpe 区间 56%%）——换检验不产生新信息"
             % (quart["sign_test_power"] * 100)))
 
+    measure = load("window_measure/summary.json")
+    if measure and measure.get("sweep"):
+        rows = [[("%.2f" % row["ratio"]) + ("（现行）" if abs(row["ratio"] - 0.95) < 1e-9 else ""),
+                 esc(row["start"]), "%.2f 年" % row["years"], "%d 只" % row["names_at_start"]]
+                for row in measure["sweep"]]
+        body.append(panel(
+            "样本还能延长多少：卡住的是覆盖率规则，不是数据",
+            table(["覆盖率要求", "窗口起点", "年数", "期初标的数"], rows, numeric=(2, 3)),
+            "长历史已下完（128/128，84 只到 2010 年数据源上限），但现行 95% 覆盖率规则只让窗口"
+            "退到 2019 年前后——因为约 12 只标的 2015 年后才上市。放宽到 0.75 可得 16 年、"
+            "期初仍有 98 只，远高于广度拐点。**这是唯一能突破 56% 检出力的一条路**，"
+            "但它等于重新发布（会改动全部权威数字），所以列为待决，不是已采纳。"))
+
+    body.append(panel("为什么长区间只能用后复权",
+                      '<ul class="tight">'
+                      "<li><b>provider 的前复权在 16 年尺度上会失效</b>："
+                      "sz002415 用 qfq 取 4000 根，出现 862 个非正价格，直接报错。</li>"
+                      "<li><b>后复权不会</b>：同一只票用 hfq 得 3938 根、2010-05-28 起（其真实上市日），"
+                      "贵州茅台 4000 根、2010-05-10 起。</li>"
+                      "<li><b>对收益计算而言任何一致的复权口径等价</b>，所以扩展样本可用 hfq；"
+                      "代价是它与生产 rebuilt 口径不能逐位对照，只能对照结论方向。</li>"
+                      "</ul>"))
+
     return shell("证据", "evidence.html", "".join(body))
 
 

@@ -115,6 +115,20 @@ def test_rolling_sharpe_curve_actually_varies():
     assert min(values) < 0.5
 
 
+def test_evidence_page_shows_the_sample_extension_tradeoff():
+    """The one lever left on statistical power must be visible, with its price."""
+    path = ROOT / "reports" / "window_measure" / "summary.json"
+    if not path.exists():
+        pytest.skip("run scripts/measure_window.py first")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    text = _text("evidence.html")
+    assert "样本还能延长多少" in text
+    assert "16.01 年" in text
+    assert "为什么长区间只能用后复权" in text
+    cheap = next(r for r in payload["sweep"] if abs(r["ratio"] - 0.75) < 1e-9)
+    assert cheap["names_at_start"] >= 90
+
+
 def test_risk_page_carries_both_risk_charts():
     text = _text("risk.html")
     assert "回撤曲线（水下）" in text
