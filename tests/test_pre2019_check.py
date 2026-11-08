@@ -69,6 +69,22 @@ def test_the_earlier_window_is_not_worse():
     assert rows["pre-2019"]["sharpe"] > rows["post-2019"]["sharpe"]
 
 
+def test_leave_one_out_stays_inside_pre2019():
+    """Dropping a year from the whole series would mix in post-2019 days."""
+    payload = _summary()
+    loo = payload.get("leave_one_out_pre2019") or []
+    assert loo, "no leave-one-out rows"
+    assert {row["dropped"] for row in loo} <= set(range(2010, 2019))
+
+
+def test_removing_the_best_year_still_leaves_an_edge():
+    """2017 carries about half the return; the edge must survive without it."""
+    loo = {row["dropped"]: row for row in _summary()["leave_one_out_pre2019"]}
+    assert loo[2017]["sharpe"] < 0.85
+    assert loo[2017]["sharpe"] > 0.4
+    assert loo[2017]["total_return"] > 0.3
+
+
 def test_the_analysis_records_the_survivorship_caveat():
     payload = _summary()
     assert "幸存者" in payload["note"] or payload["symbols"] < 128

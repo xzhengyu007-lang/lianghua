@@ -123,7 +123,41 @@ def main(argv: list[str] | None = None) -> int:
             "days": int(len(sliced.returns)),
         })
 
+    # Year by year: an "edge" that lives in one bubble year is not an edge.
+    by_year = []
+    for year in range(2010, 2027):
+        sliced = slice_result(result, start="%d-01-01" % year, end="%d-12-31" % year)
+        if len(sliced.returns) < 30:
+            continue
+        m = sliced.metrics
+        by_year.append({
+            "year": year,
+            "total_return": float(m.total_return),
+            "sharpe": float(m.sharpe),
+            "max_drawdown": float(m.max_drawdown),
+            "days": int(len(sliced.returns)),
+        })
+
+    # Leave-one-year-out: if the edge dies when one year is removed, it was one year.
+    loo = []
+    pre = [row["year"] for row in by_year if row["year"] <= 2018]
+    for drop in pre:
+        # Scope to the pre-2019 window: dropping a year from the whole series would
+        # mix in the post-2019 years and cannot answer "is 2010-2018 one year?".
+        keep = [r for r in result.returns.index if r.year <= 2018 and r.year != drop]
+        subset = result.returns.loc[keep]
+        if len(subset) < 500:
+            continue
+        mean = float(subset.mean())
+        std = float(subset.std())
+        loo.append({
+            "dropped": drop,
+            "sharpe": (mean / std * (252 ** 0.5)) if std else None,
+            "total_return": float((1.0 + subset).prod() - 1.0),
+        })
+
     payload = {"symbols": len(panel), "phases": len(frames), "target_vol": TARGET_VOL,
+               "by_year": by_year, "leave_one_out_pre2019": loo,
                "spec": {"top_n": 8, "vol_window": 60, "trend_window": 120,
                         "max_per_sector": 2, "rebalance_days": 20},
                "rows": rows,
@@ -134,6 +168,12 @@ def main(argv: list[str] | None = None) -> int:
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=float),
                    encoding="utf-8")
 
+    for row in by_year:
+        print("    %d  %+7.1f%%  Sharpe %5.2f" % (row["year"], row["total_return"] * 100,
+                                                  row["sharpe"]))
+    for row in loo:
+        print("    drop %d -> Sharpe %.3f  cumulative %+.1f%%"
+              % (row["dropped"], row["sharpe"] or 0, row["total_return"] * 100))
     for row in rows:
         print("  %-10s %s..%s  %+.1f%%  Sharpe %.3f  MDD %.1f%%  %d days"
               % (row["half"], row["start"], row["end"], row["total_return"] * 100,
