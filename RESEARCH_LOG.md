@@ -136,6 +136,7 @@
 - 23.129 窗口到底能退到哪：卡住的是覆盖率规则，不是数据
 - 23.130 长区间只能用后复权：qfq 在 4000 根上直接失效，hfq 不会
 - 23.131 2019 年之前也有超额：第一个真正的样本外证据（但含幸存者偏差）
+- 23.132 并行会话共用一个仓库时，`git add -A` 会把别人的半成品一起提交
 <!-- /TOC -->
 
 ## 1. 数据源与范围
@@ -8906,6 +8907,43 @@ sz002415 FAILED (5) sz002415: 862 non-positive price rows in adjusted history;
 - `scripts/run_pre2019_check.py`、`reports/pre2019_check/summary.json`
 - `tests/test_pre2019_check.py`
 - `FINDINGS.md` 第 103 条
+
+### 23.132 并行会话共用一个仓库时，`git add -A` 会把别人的半成品一起提交
+
+这一轮发现仓库里有**另一个会话在同时开发**（作者同为 zyx，提交时间穿插在我的提交之间）：
+他们建了 `quant_system/realtime.py`（实时行情层）、`quant_system/trading/`（下单管线：
+audit / gates / idempotency / order_state / orders_file / pipeline / recon / risk_rules）、
+交易日历与快照库，并带来约 74 项新测试。
+
+我这一轮照旧用 `git add -A` 提交，结果**把他们正在写的文件一起提交并推送了**，
+而其中一条测试当时是红的（`test_advice.py::test_names_come_from_the_offline_universe`，
+证券名称为空）。也就是说我把一个**不是我写的、也还没做完的红状态推到了远端**。
+
+三点教训：
+
+1. **��享仓库里不能用 `git add -A`。** 必须显式列路径。这已经是同一类问题的第三次：
+   §23.115 是把 `pytest-of-Administrator/` 扫进仓库，这次是把别人的开发中代码扫进仓库。
+   **根因相同：用"全部"代替"我改的那些"。**
+2. **发现别人在改的文件就不要动。** 我确认了 `tests/test_advice.py` 与 `README.md` 当时正处于
+   修改状态（`git status` 显示 M），所以正确动作是**不碰**，而不是"顺手修一下那条测试"——
+   那会在他们的编辑上产生冲突。
+3. **红状态要如实说出归属，而不是掩盖。** 那条失败属于 trading/advice 那条线（他们文档里也写了
+   "broker file 曾因键名未归一化而出现空白证券名称"），与我这一轮的研究和站点改动无关；
+   我的改动（站点 18 项 + 预2019 检查 4 项）全绿。
+
+#### 这一轮的边界因此明确
+
+- **我的**：站点（三组十页、回撤/滚动 Sharpe、样本延长面板）、`run_pre2019_check.py` 与 §23.131、
+  `measure_window.py` 与 §23.129、hfq 口径与 §23.130。
+- **他们的**：`realtime.py`、`trading/`、交易日历、快照库，以及那 74 项测试。
+- 后续提交一律限定路径；`README.md` 与 `tests/test_advice.py` 在他们手上，不碰。
+
+#### 定位
+
+- 本轮受影响提交：`52f4092`（含他们的 `trading/` 与 realtime 相关文件）
+- 之后的提交方式：`git add <显式路径>`
+- `FINDINGS.md` 第 104 条
+
 
 
 
