@@ -4,8 +4,8 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 122 |
-| 在研究日志里出现过 | 81 |
+| 脚本总数 | 123 |
+| 在研究日志里出现过 | 82 |
 | 有对应测试 | 51 |
 | **两者都没有（孤儿）** | **40** |
 
@@ -67,6 +67,7 @@
 | `build_data_manifest.py` | build | ✓ | ✓ | A manifest of the cached data, so a fresh checkout can prove it has the same data. |
 | `build_decision_memo.py` | build | ✓ | ✓ | One page that answers "should we put money on this?" without reading 93 sections. |
 | `build_delisted_universe.py` | build | ✓ | — | Build a point-in-time universe from real delisted names. |
+| `build_market_snapshot.py` | build | ✓ | — | Market context for the daily page: index, breadth, sectors, next rebalance. |
 | `build_report_index.py` | build | — | — | Build reports/INDEX.md: one line per report directory with its headline metrics. |
 | `build_research_toc.py` | build | — | ✓ | Keep a table of contents at the top of RESEARCH_LOG.md. |
 | `build_script_inventory.py` | build | ✓ | ✓ | Inventory of every script: what it does, whether it is documented, whether it is tested. |

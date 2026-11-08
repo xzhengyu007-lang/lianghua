@@ -15,6 +15,21 @@
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.9);
 }
 html{-webkit-text-size-adjust:100%}
+body.light{
+  --bg:#f6f8fc; --s1:#ffffff; --s2:#f1f4f9;
+  --line:#e3e8f0; --line2:#cfd8e6;
+  --tx:#121a28; --d1:#4a5568; --d2:#7b8794;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 8px 24px -16px rgba(16,24,40,.28);
+}
+body.light{background:radial-gradient(1000px 480px at 10% -10%, rgba(91,157,255,.10), transparent 60%),var(--bg)}
+body.light header{background:rgba(255,255,255,.86)}
+body.light nav a.on{color:var(--a1);background:rgba(91,157,255,.10)}
+body.light code{background:rgba(91,157,255,.12);color:#245ac2}
+body.light thead th{background:var(--s2);color:#5b6a80}
+body.light .q{background:var(--s2)}
+#theme{background:var(--s2);border:1px solid var(--line);color:var(--d1);cursor:pointer;
+  border-radius:8px;padding:5px 10px;font-size:12.5px;margin-left:8px}
+#theme:hover{color:var(--tx);border-color:var(--line2)}
 body{
   background:
     radial-gradient(1100px 520px at 12% -8%, rgba(91,157,255,.09), transparent 62%),
@@ -142,8 +157,21 @@ footer{border-top:1px solid var(--line);margin-top:34px;padding:20px 0 38px;
 </style>
 </head>
 <body>
-<header><div class="wrap hd"><div class="brand"><span class="logo"></span>A 股量化研究</div><nav><span class="grp">应用</span><a href="index.html">总览</a><a href="daily.html">每日</a><span class="grp">研究</span><a href="strategy.html">策略</a><a href="evidence.html">证据</a><a href="risk.html" class="on">风险</a><a href="analysis.html">解读</a><span class="grp">档案</span><a href="findings.html">台账</a><a href="log.html">日志</a><a href="reports.html">报告</a></nav></div></header>
+<header><div class="wrap hd"><div class="brand"><span class="logo"></span>A 股量化研究</div><nav><span class="grp">应用</span><a href="index.html">总览</a><a href="daily.html">每日</a><a href="market.html">市场</a><span class="grp">研究</span><a href="strategy.html">策略</a><a href="evidence.html">证据</a><a href="risk.html" class="on">风险</a><a href="analysis.html">解读</a><span class="grp">档案</span><a href="findings.html">台账</a><a href="log.html">日志</a><a href="reports.html">报告</a></nav><button id="theme" title="切换主题">主题</button></div></header>
 <div class="wrap"><div class="hero"><div class="eyebrow">Risk</div><h1>成本、执行与<em>已知的坑</em></h1><p class="lede">这一页只讲会让实盘结果低于回测的东西，以及本仓明确没解决的事。</p></div><div class="panel"><h2>微观结构下界：5bp 滑点在低价窗口不可能</h2><div class="sub">A 股最小变动价位 0.01 元；单边价差 = 0.5 x tick / 价格，是滑点不能低于的下界</div><div class="scroll"><table><thead><tr><th>窗口</th><th class="r">持仓价中位</th><th class="r">加权 tick</th><th class="r">单边半价差</th><th class="r">超出 published</th></tr></thead><tbody><tr><td>2019-2021</td><td class="r">5.79</td><td class="r">21.0 bp</td><td class="r">10.5 bp</td><td class="r">+5.5 bp</td></tr><tr><td>2022-2023</td><td class="r">6.52</td><td class="r">18.2 bp</td><td class="r">9.1 bp</td><td class="r">+4.1 bp</td></tr><tr><td>2024-2026</td><td class="r">17.93</td><td class="r">9.6 bp</td><td class="r">4.8 bp</td><td class="r">+0.0 bp</td></tr></tbody></table></div></div><div class="panel"><h2>执行时点：晚一天代价多大</h2><div class="sub">九格配对区间全含 0；但斜率约 0.03 Sharpe/日，晚一周会掉约 0.15</div><div class="scroll"><table><thead><tr><th>延迟</th><th class="r">2019-2021</th><th class="r">2022-2023</th><th class="r">2024-2026</th></tr></thead><tbody><tr><td>不延迟</td><td class="r">1.096</td><td class="r">0.746</td><td class="r">0.800</td></tr><tr><td>晚 1 日</td><td class="r">1.058</td><td class="r">0.747</td><td class="r">0.759</td></tr><tr><td>晚 2 日</td><td class="r">1.055</td><td class="r">0.768</td><td class="r">0.720</td></tr><tr><td>晚 3 日</td><td class="r">1.018</td><td class="r">0.793</td><td class="r">0.691</td></tr></tbody></table></div></div><div class="panel"><h2>容量</h2><div class="sub">资金规模上升时冲击成本如何侵蚀收益</div><div class="scroll"><table><thead><tr><th>窗口</th><th>参与率</th><th class="r">Sharpe</th><th class="r">累计收益</th></tr></thead><tbody><tr><td></td><td></td><td class="r">1.039</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">1.036</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">1.026</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">1.021</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">1.022</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">0.991</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">0.955</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">0.967</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">1.034</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">1.020</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">0.989</td><td class="r"><span class="dim">-</span></td></tr><tr><td></td><td></td><td class="r">0.969</td><td class="r"><span class="dim">-</span></td></tr></tbody></table></div></div><div class="panel warn"><h2>本仓明确没解决的事</h2><ul class="tight"><li><b>数据缓存不入库。</b>别人 clone 后必须自己下载，数据清单只能核对是否同一份，不能保证一致。</li><li><b>2019-06 起的历史是下载截断</b>，不是数据源限制：调大下载参数可回溯到 2010，但受 provider 限流，目前只完成一部分。</li><li><b>开盘集合竞价的成交假设未被验证</b>，需要竞价明细，本仓没有。</li><li><b>200+ 个非关键报告没做删除重跑实测</b>，只在关键集上验证过逐字节复现。</li></ul></div></div>
-<footer><div class="wrap">由 <code>scripts/build_site.py</code> 生成于 2026-11-09 01:06 · 历史回测含成本假设，不构成投资建议。</div></footer>
+<footer><div class="wrap">由 <code>scripts/build_site.py</code> 生成于 2026-11-09 01:59 · 历史回测含成本假设，不构成投资建议。</div></footer>
 </body>
 </html>
+
+<script>
+(function(){
+  var KEY='aq-theme';
+  function apply(mode){document.body.classList.toggle('light', mode==='light');
+    try{localStorage.setItem(KEY,mode);}catch(e){}}
+  var saved=null; try{saved=localStorage.getItem(KEY);}catch(e){}
+  if(saved==='light'){document.body.classList.add('light');}
+  var btn=document.getElementById('theme');
+  if(btn) btn.onclick=function(){
+    apply(document.body.classList.contains('light')?'dark':'light');};
+})();
+</script>

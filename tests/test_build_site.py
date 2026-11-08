@@ -42,11 +42,10 @@ def test_every_page_is_emitted():
 
 
 def test_the_navigation_is_grouped_by_purpose():
-    """应用 / 研究 / 档案 -- the whole point of this pass."""
     groups = [g for g, _items in site.NAV]
     assert groups == ["应用", "研究", "档案"]
     apply_pages = [h for h, _l in dict(site.NAV)["应用"]]
-    assert apply_pages == ["index.html", "daily.html"]
+    assert apply_pages == ["index.html", "daily.html", "market.html"]
 
 
 def test_pages_link_to_each_other():
@@ -63,16 +62,52 @@ def test_no_page_loads_a_remote_asset():
         assert remote == [], (name, remote[:3])
 
 
-def test_daily_page_ships_holdings_and_reports_failure():
+def test_daily_page_ships_holdings_checklist_and_failure_branch():
     text = _text("daily.html")
     assert "const HOLDINGS" in text
     assert "qt.gtimg.cn" in text
     assert "取不到实时数据" in text
+    assert "执行检查清单" in text
 
 
 def test_old_live_url_redirects_to_daily():
-    text = _text("live.html")
-    assert "url=daily.html" in text
+    assert "url=daily.html" in _text("live.html")
+
+
+def test_theme_toggle_is_present_on_every_page():
+    for name, _label in site.PAGES:
+        text = _text(name)
+        assert 'id="theme"' in text, name
+        assert "aq-theme" in text, name
+
+
+def test_deployable_numbers_come_from_the_year_table():
+    """Regression: reading a report called *blend* showed an arbitrary study."""
+    published = site.deployable()
+    assert published, "year_table_blend/summary.json missing"
+    assert abs(published["return"] - 0.958701932260305) < 1e-9
+    text = _text("index.html")
+    assert "+95.87%" in text
+    assert "-15.70%" in text
+
+
+def test_equity_curve_is_built_from_daily_returns():
+    curve = site.deployable_curve(max_points=50)
+    assert len(curve) == 50
+    assert curve[-1][1] > 0
+
+
+def test_market_page_reports_breadth_and_cadence_semantics():
+    text = _text("market.html")
+    assert "涨 / 跌" in text
+    assert "MA60 上方" in text
+    snapshot = ROOT / "reports" / "market" / "snapshot.json"
+    if snapshot.exists():
+        payload = json.loads(snapshot.read_text(encoding="utf-8"))
+        assert "cadence" in payload
+        # 20 interleaved phases: a single "next rebalance" would be a lie
+        assert "next_phase0_rebalance" in payload["cadence"]
+        assert "每个交易日都有一个相位在调仓" in payload["cadence"]["note"]
 
 
 def test_findings_page_has_filters_and_every_row():
@@ -96,7 +131,7 @@ def test_analysis_page_renders_the_commentary():
         assert section["heading"] in text
 
 
-def test_each_page_carries_exactly_one_active_nav_item():
+def test_each_page_carries_one_active_nav_item():
     for name, _label in site.PAGES:
         text = _text(name)
         assert text.count('class="on"') >= 1, name

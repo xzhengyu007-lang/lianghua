@@ -42,7 +42,7 @@ def _load(name: str, filename: str):
 dashboard = _load("build_dashboard", "build_dashboard.py")
 
 NAV = [
-    ("应用", [("index.html", "总览"), ("daily.html", "每日")]),
+    ("应用", [("index.html", "总览"), ("daily.html", "每日"), ("market.html", "市场")]),
     ("研究", [("strategy.html", "策略"), ("evidence.html", "证据"),
               ("risk.html", "风险"), ("analysis.html", "解读")]),
     ("档案", [("findings.html", "台账"), ("log.html", "日志"), ("reports.html", "报告")]),
@@ -59,6 +59,21 @@ STYLE = """
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -18px rgba(0,0,0,.9);
 }
 html{-webkit-text-size-adjust:100%}
+body.light{
+  --bg:#f6f8fc; --s1:#ffffff; --s2:#f1f4f9;
+  --line:#e3e8f0; --line2:#cfd8e6;
+  --tx:#121a28; --d1:#4a5568; --d2:#7b8794;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 8px 24px -16px rgba(16,24,40,.28);
+}
+body.light{background:radial-gradient(1000px 480px at 10% -10%, rgba(91,157,255,.10), transparent 60%),var(--bg)}
+body.light header{background:rgba(255,255,255,.86)}
+body.light nav a.on{color:var(--a1);background:rgba(91,157,255,.10)}
+body.light code{background:rgba(91,157,255,.12);color:#245ac2}
+body.light thead th{background:var(--s2);color:#5b6a80}
+body.light .q{background:var(--s2)}
+#theme{background:var(--s2);border:1px solid var(--line);color:var(--d1);cursor:pointer;
+  border-radius:8px;padding:5px 10px;font-size:12.5px;margin-left:8px}
+#theme:hover{color:var(--tx);border-color:var(--line2)}
 body{
   background:
     radial-gradient(1100px 520px at 12% -8%, rgba(91,157,255,.09), transparent 62%),
@@ -186,6 +201,22 @@ footer{border-top:1px solid var(--line);margin-top:34px;padding:20px 0 38px;
 """
 
 
+THEME_SCRIPT = """
+<script>
+(function(){
+  var KEY='aq-theme';
+  function apply(mode){document.body.classList.toggle('light', mode==='light');
+    try{localStorage.setItem(KEY,mode);}catch(e){}}
+  var saved=null; try{saved=localStorage.getItem(KEY);}catch(e){}
+  if(saved==='light'){document.body.classList.add('light');}
+  var btn=document.getElementById('theme');
+  if(btn) btn.onclick=function(){
+    apply(document.body.classList.contains('light')?'dark':'light');};
+})();
+</script>
+"""
+
+
 def esc(value) -> str:
     return html.escape(str(value))
 
@@ -307,12 +338,14 @@ def shell(title: str, active: str, body: str) -> str:
         '<meta name="color-scheme" content="dark">\n'
         "<title>%s · A 股量化研究</title>\n<style>%s</style>\n</head>\n<body>\n"
         '<header><div class="wrap hd"><div class="brand"><span class="logo"></span>'
-        "A 股量化研究</div><nav>%s</nav></div></header>\n"
+        "A 股量化研究</div><nav>%s</nav>"
+        '<button id="theme" title="切换主题">主题</button></div></header>\n'
         '<div class="wrap">%s</div>\n'
         '<footer><div class="wrap">由 <code>scripts/build_site.py</code> 生成于 %s · '
         "历史回测含成本假设，不构成投资建议。</div></footer>\n</body>\n</html>\n"
         % (esc(title), STYLE, "".join(parts), body,
            datetime.now().strftime("%Y-%m-%d %H:%M"))
+        + THEME_SCRIPT
     )
 
 
@@ -338,6 +371,47 @@ def holdings():
     return []
 
 
+DEPLOYABLE_KEY = "blend@12%"
+
+
+def deployable():
+    """The published configuration's own numbers.
+
+    These are not in any report's metrics.json -- they live in the year table's
+    overall block, keyed by config. Reading a "blend" report by name instead picks
+    an arbitrary study, which is how the first version of this page showed the
+    wrong headline number.
+    """
+    payload = load("year_table_blend/summary.json")
+    if not payload:
+        return None
+    return (payload.get("overall") or {}).get(DEPLOYABLE_KEY)
+
+
+def deployable_curve(max_points: int = 240):
+    path = ROOT / "reports" / "year_table_blend" / "daily_returns.csv"
+    if not path.exists():
+        return []
+    import csv as _csv
+
+    with path.open(encoding="utf-8-sig") as handle:
+        rows = list(_csv.DictReader(handle))
+    if not rows:
+        return []
+    equity = 1.0
+    series = []
+    for index, row in enumerate(rows):
+        try:
+            equity *= 1.0 + float(row["return"])
+        except (TypeError, ValueError):
+            continue
+        series.append((index, (equity - 1.0) * 100.0))
+    if len(series) <= max_points:
+        return series
+    step = len(series) / float(max_points)
+    return [series[min(len(series) - 1, int(i * step))] for i in range(max_points)]
+
+
 def find_report(reports, needle: str):
     for report in reports:
         if needle in report.get("name", ""):
@@ -348,25 +422,44 @@ def find_report(reports, needle: str):
 # ---------------------------------------------------------------- pages
 
 def page_index(ctx) -> str:
-    reports = ctx["reports"]
-    deployable = find_report(reports, "deployable") or find_report(reports, "blend")
-    metrics = (deployable or {}).get("metrics", {})
     findings = ctx["findings"]
     high = [f for f in findings if str(f.get("confidence", "")).startswith("高")]
+    published = deployable() or {}
+    market = load("market/snapshot.json") or {}
 
     cards = "".join([
-        card("部署口径累计收益", pct(metrics.get("total_return")), "混合 20 相位 + 12% 目标波动", True),
-        card("Sharpe", num(metrics.get("sharpe")), "相位中位仅 0.668", True),
-        card("最大回撤", pct(metrics.get("max_drawdown")), "含成本假设", False),
+        card("部署口径累计收益", pct(published.get("return")), "混合 20 相位 + 12% 目标波动", True),
+        card("Sharpe", num(published.get("sharpe")), "相位中位仅 0.668", True),
+        card("最大回撤", pct(published.get("max_drawdown")), "含成本假设", False),
         card("结论", "%d 条" % len(findings), "高置信度 %d 条" % len(high), False),
     ])
-    chart = svg_curve(deployable["eq"]) if deployable and deployable.get("eq") else ""
+    chart = svg_curve(deployable_curve()) if published else ""
+
+    strip = ""
+    if market:
+        breadth = market.get("breadth") or {}
+        index_info = market.get("index") or {}
+        cadence = market.get("cadence") or {}
+        bits = ['<span class="dim">数据截至</span> <b>%s</b>' % esc(market.get("as_of", ""))]
+        if index_info:
+            bits.append('<span class="dim">沪深300</span> %s' % pct(index_info.get("chg_1d")))
+        if breadth:
+            bits.append('<span class="dim">涨/跌</span> <b>%d / %d</b>'
+                        % (breadth.get("up", 0), breadth.get("down", 0)))
+            bits.append('<span class="dim">MA60 上方</span> <b>%.0f%%</b>'
+                        % (100 * (breadth.get("above_ma60_share") or 0)))
+        if cadence:
+            bits.append('<span class="dim">调仓</span> <b>每 %d 日 / %d 相位错开</b>'
+                        % (cadence.get("cadence_days", 20), cadence.get("phases", 20)))
+        strip = ('<div class="panel tight"><div class="bar" style="margin:0">%s</div></div>'
+                 % "".join('<span>%s</span>' % b for b in bits))
 
     body = [
         '<div class="hero"><div class="eyebrow">A-share Low-Volatility Research</div>'
         "<h1>先看结论，再看<em>证据</em></h1>"
         '<p class="lede">一个 A 股日频量化研究仓库的公开站点：'
         "<b>策略有效，但远未到「已被证明」</b>。下面按你来的目的分流。</p></div>",
+        strip,
         '<div class="grid">%s</div>' % cards,
         panel("净值曲线", chart or '<p class="note">未找到净值曲线。</p>',
               "部署口径（20 相位等权 + 12% 目标波动），虚线为零轴"),
@@ -411,7 +504,7 @@ def page_daily(ctx) -> str:
         '<div class="grid">%s</div>' % "".join([
             card("持仓数量", "%d 只" % len(rows), "每行业上限 2 只"),
             card("合计目标权重", "%.1f%%" % (total * 100), "其余为现金缓冲"),
-            card("调仓节奏", "每 20 个交易日", "按自然年重置锚点"),
+            card("调仓节奏", "每日有相位调仓", "20 相位各错开 1 日，按自然年重置"),
             card("目标波动", "12%", "波动目标，不是收益目标"),
         ]),
         panel("实时行情", '<div class="live-top"><span class="dot" id="dot"></span>'
@@ -424,6 +517,17 @@ def page_daily(ctx) -> str:
               table(["标的", "行业", "目标权重", "信号价", "备注"], body_rows, numeric=(2, 3))
               if body_rows else '<p class="note">未找到 reports/signal_today/orders.csv。</p>',
               "权重为次日开盘的目标，不是当前市值权重"),
+        panel("执行检查清单", '<ul class="tight" id="ck">'
+              "<li><label><input type=\"checkbox\"> 数据新鲜度：信号用的是前一交易日收盘，"
+              "检查该日数据是否完整</label></li>"
+              "<li><label><input type=\"checkbox\"> 涨跌停：开盘即封板的名字当日无法买入，"
+              "按次日再试</label></li>"
+              "<li><label><input type=\"checkbox\"> 整手取整：A 股 100 股一手，"
+              "金额不足一手会留下残差</label></li>"
+              "<li><label><input type=\"checkbox\"> 仓位上限：单票不超 25%，合计不超 95%</label></li>"
+              "<li><label><input type=\"checkbox\"> 成交记录：把实际成交价记下来，"
+              "与信号价的差就是真实滑点</label></li></ul>",
+              "勾选状态只保存在本地浏览器，不上传"),
         panel("执行注意", '<ul class="tight">'
               "<li><b>晚一天执行代价很小</b>：实测晚 1 日约掉 0.04 Sharpe，九格区间全含 0；"
               "但斜率约 0.03/日，<b>晚一周会掉 0.15</b>。</li>"
@@ -472,6 +576,58 @@ refresh();setInterval(refresh,15000);
         ensure_ascii=False))
 
     return shell("每日", "daily.html", "".join(body) + script)
+
+
+def page_market(ctx) -> str:
+    """Market recap: indices, breadth, sectors -- context, never a signal."""
+    market = load("market/snapshot.json")
+    if not market:
+        return shell("市场", "market.html",
+                     '<div class="hero"><h1>市场</h1><p class="lede">'
+                     "未找到 reports/market/snapshot.json，请先运行 "
+                     "<code>scripts/build_market_snapshot.py</code>。</p></div>")
+
+    index_info = market.get("index") or {}
+    breadth = market.get("breadth") or {}
+    sectors = market.get("sectors") or []
+
+    def plain(value, digits=2):
+        return "-" if not isinstance(value, (int, float)) else "%+.*f%%" % (digits, value * 100)
+
+    cards = "".join([
+        card("沪深 300", num(index_info.get("close"), 2),
+             "日 %s · 20 日 %s" % (plain(index_info.get("chg_1d")),
+                                   plain(index_info.get("chg_20d"))), True),
+        card("涨 / 跌", "%d / %d" % (breadth.get("up", 0), breadth.get("down", 0)),
+             "全池 %d 只，平盘 %d" % (breadth.get("names", 0), breadth.get("flat", 0))),
+        card("MA60 上方", "%.0f%%" % (100 * (breadth.get("above_ma60_share") or 0)),
+             "%d 只站上 60 日均线" % breadth.get("above_ma60_names", 0)),
+        card("中位日涨跌", pct(breadth.get("median_ret_1d")), "横截面中位数，不是市值加权"),
+    ])
+
+    sector_rows = [[esc(s["sector"]), "%d" % s["names"], pct(s["ret_1d"]), pct(s["ret_20d"])]
+                   for s in sectors]
+    leaders = ", ".join(esc(s["sector"]) for s in sectors[:3]) or "-"
+    laggards = ", ".join(esc(s["sector"]) for s in sectors[-3:]) or "-"
+
+    body = [
+        '<div class="hero"><div class="eyebrow">Market</div>'
+        "<h1>今天是什么<em>行情</em></h1>"
+        '<p class="lede">读单只之前先看整体。数据截至 <b>%s</b>。'
+        "这一页是<b>对照信息</b>，不参与信号计算——广度择时在本仓已被证伪。</p></div>"
+        % esc(market.get("as_of", "")),
+        '<div class="grid">%s</div>' % cards,
+        panel("板块（等权，按当日涨跌排序）",
+              table(["板块", "只数", "当日", "近 20 日"], sector_rows, numeric=(1, 2, 3)),
+              "领涨：%s ｜ 领跌：%s" % (leaders, laggards)),
+        panel("为什么它不作为信号",
+              '<ul class="tight">'
+              "<li><b>广度择时已证伪</b>：78 个月 t = -3.9，且不是低波策略专属。</li>"
+              "<li><b>上了真实撮合后失效</b>：月度算术口径的 +0.15 Sharpe 是成本幻觉。</li>"
+              "<li><b>它的用途是判断当天该不该动手</b>（比如全池普跌时更容易遇到跌停无法成交），"
+              "而不是预测方向。</li></ul>", cls="warn"),
+    ]
+    return shell("市场", "market.html", "".join(body))
 
 
 def page_strategy(ctx) -> str:
@@ -856,6 +1012,7 @@ def main(argv: list[str] | None = None) -> int:
     pages = {
         "index.html": page_index(ctx),
         "daily.html": page_daily(ctx),
+        "market.html": page_market(ctx),
         "strategy.html": page_strategy(ctx),
         "evidence.html": page_evidence(ctx),
         "risk.html": page_risk(ctx),
