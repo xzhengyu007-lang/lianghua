@@ -155,7 +155,11 @@ def report_markdown(payload: dict) -> str:
     ]
     lines = ["| 指标 | 目标 | 实测 | 条件 |", "|---|---:|---:|---|"]
     for label, target, value, note in rows:
-        lines.append("| %s | %s | **%.2fs** | %s |" % (label, target, value, note))
+        # ``--skip-block`` leaves the two network-blocked measurements as None: print
+        # "跳过" rather than crashing on ``%.2f`` (it did, silently, from the acceptance
+        # runner -- which is how the runner's empty detail line was noticed).
+        shown = "跳过" if value is None else "**%.2fs**" % float(value)
+        lines.append("| %s | %s | %s | %s |" % (label, target, shown, note))
     return "\n".join(lines)
 
 

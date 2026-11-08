@@ -42,11 +42,20 @@ RECORD = ROOT / "reports" / "acceptance" / "last.json"
 # individual checks
 # --------------------------------------------------------------------------- #
 def _run(command: list[str], *, timeout: float = 900.0) -> tuple[int, str]:
+    """Run a child process and keep the last few lines of its output.
+
+    ``encoding="utf-8", errors="replace"`` is not cosmetic: with ``text=True`` alone
+    Python decodes the child's output with the *locale* codec (GBK on this machine),
+    and a single UTF-8 byte in pytest's output makes the reader thread raise
+    UnicodeDecodeError -- which surfaced as "pytest ❌" for a run where every test
+    passed.  Decode as UTF-8 and replace anything unreadable.
+    """
     completed = subprocess.run(
-        command, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout
+        command, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout,
+        encoding="utf-8", errors="replace",
     )
-    tail = (completed.stdout or "").strip().splitlines()[-3:]
-    return completed.returncode, " | ".join(tail)
+    lines = [line for line in (completed.stdout or "").strip().splitlines() if line.strip()]
+    return completed.returncode, " | ".join(lines[-3:])
 
 
 def check_tests() -> tuple[bool, str]:

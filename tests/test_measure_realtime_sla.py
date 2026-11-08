@@ -91,3 +91,20 @@ def test_the_holdings_sample_covers_the_desk_cases() -> None:
 def test_the_payload_is_strict_json() -> None:
     payload = {"throttle": {"request_gap": 3.0}, "degraded_single": {"elapsed": None}}
     assert json.loads(json.dumps(payload, allow_nan=False)) == payload
+
+
+def test_a_skipped_measurement_renders_as_skipped() -> None:
+    """``--skip-block`` leaves the two blocked-network rows empty; the table must not crash."""
+    payload = {
+        "quote_4_single": {"elapsed": 0.31},
+        "quote_4_cross": {"elapsed": 0.33},
+        "quote_50_cross": {"elapsed": 0.34},
+        "calendar": {"cold": 0.84, "disk": 0.04},
+        "degraded_single": {"elapsed": None, "skipped": "—skip-block"},
+        "degraded_cross": {"elapsed": None, "skipped": "—skip-block"},
+        "reconnect": {"elapsed": 0.33},
+        "throttle": {"request_gap": 3.0},
+    }
+    table = report_markdown(payload)
+    assert table.count("跳过") == 2
+    assert "0.31" in table
