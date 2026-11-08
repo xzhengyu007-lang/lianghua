@@ -156,8 +156,22 @@ def main(argv: list[str] | None = None) -> int:
             "total_return": float((1.0 + subset).prod() - 1.0),
         })
 
+    # The two years that dominate: what is left without both of them?
+    keep = [r for r in result.returns.index if r.year <= 2018 and r.year not in (2014, 2017)]
+    combined = None
+    if len(keep) > 500:
+        subset = result.returns.loc[keep]
+        std = float(subset.std())
+        combined = {
+            "dropped": [2014, 2017],
+            "sharpe": (float(subset.mean()) / std * (252 ** 0.5)) if std else None,
+            "total_return": float((1.0 + subset).prod() - 1.0),
+            "days": int(len(subset)),
+        }
+
     payload = {"symbols": len(panel), "phases": len(frames), "target_vol": TARGET_VOL,
                "by_year": by_year, "leave_one_out_pre2019": loo,
+               "drop_2014_2017": combined,
                "spec": {"top_n": 8, "vol_window": 60, "trend_window": 120,
                         "max_per_sector": 2, "rebalance_days": 20},
                "rows": rows,
@@ -174,6 +188,9 @@ def main(argv: list[str] | None = None) -> int:
     for row in loo:
         print("    drop %d -> Sharpe %.3f  cumulative %+.1f%%"
               % (row["dropped"], row["sharpe"] or 0, row["total_return"] * 100))
+    if combined:
+        print("    drop 2014+2017 -> Sharpe %.3f  cumulative %+.1f%%  (%d days)"
+              % (combined["sharpe"] or 0, combined["total_return"] * 100, combined["days"]))
     for row in rows:
         print("  %-10s %s..%s  %+.1f%%  Sharpe %.3f  MDD %.1f%%  %d days"
               % (row["half"], row["start"], row["end"], row["total_return"] * 100,

@@ -85,6 +85,18 @@ def test_removing_the_best_year_still_leaves_an_edge():
     assert loo[2017]["total_return"] > 0.3
 
 
+def test_removing_both_dominant_years_erases_the_edge():
+    """2014 and 2017 are style-tailwind years; without them the edge collapses."""
+    payload = _summary()
+    combined = payload.get("drop_2014_2017")
+    if not combined:
+        pytest.skip("combined drop not computed")
+    assert combined["dropped"] == [2014, 2017]
+    assert combined["sharpe"] < 0.6
+    assert combined["sharpe"] > 0.15
+    assert combined["total_return"] < 0.6
+
+
 def test_the_analysis_records_the_survivorship_caveat():
     payload = _summary()
     assert "幸存者" in payload["note"] or payload["symbols"] < 128
