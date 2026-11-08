@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 124 |
-| 在研究日志里出现过 | 83 |
-| 有对应测试 | 52 |
+| 脚本总数 | 125 |
+| 在研究日志里出现过 | 84 |
+| 有对应测试 | 53 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -142,6 +142,7 @@
 | `run_point_in_time.py` | run | ✓ | — | Extend the universe with real delisted names and compare against survivor-only. |
 | `run_power_recheck.py` | run | ✓ | ✓ | Detection power for the Sharpe we can actually claim. |
 | `run_power_study.py` | run | ✓ | ✓ | How much out-of-sample data does a Sharpe of 1.0 need to be provable? |
+| `run_pre2019_check.py` | run | ✓ | ✓ | Does the edge exist before 2019? A first look on the names that reach 2010. |
 | `run_publish_check.py` | run | ✓ | ✓ | Self-check for the configuration we would actually deploy. |
 | `run_quarter_consistency.py` | run | ✓ | ✓ | A sign test on quarters: far more powerful than a Sharpe interval, and weaker. |
 | `run_random_control.py` | run | ✓ | ✓ | Does the ranking add anything over random selection with the same constraints? |

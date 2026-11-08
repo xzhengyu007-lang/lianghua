@@ -1054,6 +1054,195 @@ def cmd_advice(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_trade(args: argparse.Namespace) -> int:
+    """Tiered trading: status / level / kill / plan / fills / reconcile / statement."""
+    from .trading import (
+        AuditLog,
+        IdempotencyBook,
+        RiskLimits,
+        TradingGate,
+        TradingLevel,
+        daily_statement,
+        reconcile,
+        write_alerts,
+    )
+    from .trading.pipeline import apply_session_fills, default_paths, plan_session
+    from .trading.recon import append_equity_point
+
+    paths = default_paths(args.trading_dir)
+    gate = TradingGate(paths["gate"])
+    action = args.action
+
+    if action == "status":
+        payload = {
+            "gate": gate.describe(args.date),
+            "paths": {key: str(value) for key, value in paths.items()},
+            "audit_events": AuditLog(paths["audit"]).count(),
+            "active_orders": len(IdempotencyBook(paths["idempotency"])),
+            "note": "本仓没有券商网关：L3 也只写提交记录，不存在发单代码",
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    if action == "level":
+        if args.level is None:
+            raise ValueError("--action level 需要 --level 1|2|3")
+        day = pd.Timestamp(args.date).date() if args.date else pd.Timestamp.now().date()
+        gate.set_level(TradingLevel(int(args.level)), trade_date=day if int(args.level) >= 3 else None)
+        if int(args.level) >= 3:
+            gate.authorize_today(day)
+        print(json.dumps(gate.describe(day), ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    if action == "kill":
+        gate.kill(args.reason or "人工停机")
+        print(json.dumps(gate.describe(args.date), ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    if action == "reset-kill":
+        gate.reset_kill(reset_level=True)
+        print(json.dumps(gate.describe(args.date), ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    ledger = Ledger.load(args.ledger) if args.ledger else None
+    if ledger is None and action in {"plan", "fills", "reconcile", "statement"}:
+        raise ValueError("需要 --ledger（先用 paper --init 建账）")
+
+    if action == "plan":
+        payload = _load_signal_payload(args)
+        trade_date = args.date or payload["as_of"]
+        weights = pd.Series(
+            {row["symbol"]: float(row["weight"]) for row in payload.get("orders", [])}, dtype=float
+        )
+        prices = pd.Series(
+            {row["symbol"]: float(row["price"]) for row in payload.get("orders", []) if row.get("price")},
+            dtype=float,
+        )
+        board = None
+        snapshot_time = ""
+        if args.quotes and not prices.empty:
+            from .realtime import DEFAULT_STORE, SnapshotStore, refresh
+
+            board = refresh(list(prices.index), store=SnapshotStore(args.store or DEFAULT_STORE))
+            snapshot_time = board.fetched_at.isoformat() if board.fetched_at is not None else ""
+            for symbol, quote in board.quotes.items():
+                if quote.price > 0:
+                    prices[symbol] = quote.price
+        equity = args.equity if args.equity else (
+            ledger.equity(prices.reindex(ledger.positions.keys()).fillna(0.0)) if len(prices) else ledger.cash
+        )
+        outcome = plan_session(
+            ledger=ledger,
+            target_weights=weights,
+            prices=prices,
+            gate=gate,
+            trade_date=trade_date,
+            equity=float(equity),
+            book=IdempotencyBook(paths["idempotency"]),
+            audit=AuditLog(paths["audit"]),
+            quotes=board,
+            strategy=str(payload.get("strategy", "")),
+            signal_as_of=str(payload.get("as_of", "")),
+            snapshot_time=snapshot_time,
+            output_dir=paths["orders"],
+            equity_prev_close=args.equity_prev_close,
+            names=_symbol_names(),
+            limits=RiskLimits(
+                max_order_notional=args.max_order_notional,
+                max_daily_new_exposure=args.max_daily_new_exposure,
+                max_position_weight=args.max_position_weight,
+            ),
+        )
+        print(outcome.markdown())
+        if args.output:
+            target = Path(args.output)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "plan.json").write_text(
+                json.dumps(outcome.to_dict(), ensure_ascii=False, indent=2, default=str),
+                encoding="utf-8",
+            )
+            (target / "plan.md").write_text(outcome.markdown(), encoding="utf-8")
+            print("-> %s" % target)
+        return 0 if not outcome.halted else 1
+
+    if action == "fills":
+        fills = pd.read_csv(args.fills, encoding="utf-8-sig")
+        updated = apply_session_fills(ledger, fills, trade_date=args.date or str(ledger.as_of))
+        updated.save(args.ledger)
+        prices = _prices_from_ledger(args, updated)
+        statement = daily_statement(updated, prices, trade_date=args.date or str(updated.as_of))
+        append_equity_point(paths["equity"], statement)
+        print(json.dumps(statement, ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    if action == "reconcile":
+        broker = json.loads(Path(args.broker).read_text(encoding="utf-8"))
+        report = reconcile(
+            ledger,
+            {str(k): int(v) for k, v in (broker.get("positions") or {}).items()},
+            broker_cash=broker.get("cash"),
+            tolerance=float(broker.get("tolerance", 0.0)),
+            trade_date=args.date or str(ledger.as_of or ""),
+        )
+        write_alerts(report, paths["recon"])
+        print(report.markdown())
+        return 0 if report.ok else 1
+
+    if action == "statement":
+        prices = _prices_from_ledger(args, ledger)
+        statement = daily_statement(ledger, prices, trade_date=args.date or str(ledger.as_of))
+        append_equity_point(paths["equity"], statement)
+        print(json.dumps(statement, ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    raise ValueError(f"未知 action: {action}")
+
+
+def _symbol_names() -> dict[str, str]:
+    """Readable names keyed by normalized symbol, e.g. ``sh600519`` -> 贵州茅台.
+
+    ``pit_universe`` keys are bare codes ("600519"), so they must be normalized:
+    looking up "sh600519" against a bare-key dict silently yields an empty name
+    column in the broker file (which is how this bug was noticed).
+    """
+    try:
+        from .data import normalize_symbol, pit_universe
+
+        return {normalize_symbol(str(key)): str(value) for key, value in pit_universe().items()}
+    except Exception:  # pragma: no cover - a checkout without the manifest
+        return {}
+
+
+def _load_signal_payload(args: argparse.Namespace) -> dict:
+    """Read the archived signal, or compute one from the panel."""
+    if args.signal:
+        return json.loads(Path(args.signal).read_text(encoding="utf-8"))
+    default = Path("reports") / "signal_today" / "signal.json"
+    if default.exists():
+        return json.loads(default.read_text(encoding="utf-8"))
+    panel = _panel_from_args(args)
+    signal = latest_signal(
+        panel,
+        args.strategy,
+        params=json.loads(args.params) if args.params else None,
+        equity=args.equity,
+        today=pd.Timestamp(args.date) if args.date else None,
+    )
+    return signal.to_dict()
+
+
+def _prices_from_ledger(args: argparse.Namespace, ledger: Ledger) -> pd.Series:
+    """Close prices for the ledger's holdings (needed to value the statement)."""
+    prices: dict[str, float] = {}
+    try:
+        for symbol in ledger.positions:
+            frame = load_symbol(symbol, Path(args.cache_dir))
+            prices[symbol] = float(frame["close"].iloc[-1])
+    except (FileNotFoundError, IndexError):
+        pass
+    return pd.Series(prices, dtype=float)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aq", description="A-share quantitative system")
     parser.add_argument("--cache-dir", default=str(CACHE_DIR))
@@ -1345,6 +1534,35 @@ def build_parser() -> argparse.ArgumentParser:
     advice.add_argument("--json", action="store_true")
     advice.add_argument("--output", default=None, help="write card.md / card.json / card.html here")
     advice.set_defaults(func=cmd_advice)
+    trade = sub.add_parser(
+        "trade",
+        help="tiered trading: status/level/kill/reset-kill/plan/fills/reconcile/statement",
+    )
+    trade.add_argument(
+        "--action",
+        required=True,
+        choices=["status", "level", "kill", "reset-kill", "plan", "fills", "reconcile", "statement"],
+    )
+    trade.add_argument("--ledger", default=None, help="paper ledger JSON")
+    trade.add_argument("--signal", default=None, help="signal.json to plan from (default reports/signal_today)")
+    trade.add_argument("--broker", default=None, help="broker statement JSON: {cash, positions}")
+    trade.add_argument("--fills", default=None, help="CSV of executed fills")
+    trade.add_argument("--date", default=None, help="trade date (YYYY-MM-DD)")
+    trade.add_argument("--level", type=int, choices=[0, 1, 2, 3], default=None)
+    trade.add_argument("--reason", default=None, help="kill-switch reason")
+    trade.add_argument("--equity", type=float, default=None)
+    trade.add_argument("--max-order-notional", type=float, default=200_000.0)
+    trade.add_argument("--max-daily-new-exposure", type=float, default=None,
+                       help="absolute daily new-exposure cap; omit for 0.95 x equity")
+    trade.add_argument("--max-position-weight", type=float, default=0.25)
+    trade.add_argument("--equity-prev-close", type=float, default=None,
+                       help="yesterday's equity; enables the 3%% daily-loss circuit breaker")
+    trade.add_argument("--quotes", action="store_true", help="price the plan from live L1 quotes")
+    trade.add_argument("--store", default=None, help="snapshot store used with --quotes")
+    trade.add_argument("--trading-dir", default=str(Path("reports") / "trading"),
+                       help="where gate.json / orders.jsonl / audit.jsonl live")
+    trade.add_argument("--output", default=None)
+    trade.set_defaults(func=cmd_trade)
     return parser
 
 

@@ -519,11 +519,11 @@ details{margin:6px 0}
 # construction
 # --------------------------------------------------------------------------- #
 def _name_map() -> dict[str, str]:
-    """Readable names from the offline universe list (no network, no quotes needed)."""
+    """Readable names keyed by normalized symbol (pit_universe keys are bare codes)."""
     try:
-        from .data import pit_universe
+        from .data import normalize_symbol, pit_universe
 
-        return {str(key): str(value) for key, value in pit_universe().items()}
+        return {normalize_symbol(str(key)): str(value) for key, value in pit_universe().items()}
     except Exception:  # pragma: no cover - a checkout without the manifest
         return {}
 
