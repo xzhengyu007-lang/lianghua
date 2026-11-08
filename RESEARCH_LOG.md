@@ -129,6 +129,7 @@
 - 23.122 把长历史下下来之后：窗口只退到 2018，卡住的不是数据
 - 23.123 延长样本的执行验证：raw 4000 根是干净的，provider 会限流
 - 23.124 断点续传：把「延长样本」从一条命令变成可中断的运维任务
+- 23.125 发布站点：把研究成果变成一个任何电脑都能打开的网页
 <!-- /TOC -->
 
 ## 1. 数据源与范围
@@ -8503,6 +8504,58 @@ dry run; would fetch: sh603259 sz300760 sz000333 ...
 - `scripts/download_extended.py`、`reports/download_extended/`（运行后生成）
 - `tests/test_download_extended.py`（五项：深度读取三种后缀、缺失为 0、取最深、按目标切分、dry-run 不联网）
 - `FINDINGS.md` 第 96 条
+
+### 23.125 发布站点：把研究成果变成一个任何电脑都能打开的网页
+
+用户要求「做一个可视化页面、推到 GitHub、再用 GitHub Pages 让其他电脑直接打开」。这一节记录
+做法与三个真实坑。
+
+#### 为什么不能直接用现有 dashboard
+
+`scripts/build_dashboard.py` 产出的是一个 **1 MB 单页 + 本地服务**（`serve_dashboard.py`
+提供 `/api/run` 等端点）。它适合每天自己看，但 GitHub Pages **只发文件、不跑进程**，
+远程读者的浏览器里没有 `reports/` 目录可读。所以另写静态站生成器。
+
+#### `scripts/build_site.py`
+
+- 复用 `build_dashboard` 的解析函数（`parse_findings` / `parse_log` /
+  `load_reports` / `render_markdown`），**保证站点与本地看板不会对不上数**；
+- 产出四个纯静态页面到 `docs/`：`index.html`（总览 + 决策备忘）、
+  `findings.html`（结论台账）、`log.html`（研究日志）、`reports.html`（报告索引）；
+- 数据在生成时**内联进 HTML**，页面没有任何 `fetch` 调用——有测试断言这一点；
+- 附 `.nojekyll`，避免 GitHub Pages 的 Jekyll 处理干扰。
+
+#### 坑一：日志页一开始是 191 个空壳
+
+第一版跑出来 `log.html` 只有 22 KiB。文件存在、标题正确、页面能打开——**看起来完全正常**。
+但 `parse_log` 返回的正文键是 `html`（已经渲染好），我却按 `lines` 去取，
+于是每一节都拿到空列表。修好后同一页变成 **588 KiB**（142 节含表格、176 节含段落）。
+
+**这个 bug 只有"回读产物并数内容"才能发现**——存在性检查、HTTP 200、标题正确全都过得去。
+
+#### 坑二：4 个"空节"不是 bug
+
+修好之后仍有 4 节没有正文（§17–20）。查原文发现它们**本来就是标题节**，正文在编号子节里
+（如 `### 18.1 问题`）。所以正确处理不是硬塞内容，而是在页面上标注
+"本节为标题节，正文在其编号子节中"。测试也从"不许有空节"改成"空节占比 < 10%"。
+
+#### 坑三：私有仓库 + 免费账号开不了 Pages
+
+`gh api -X POST repos/.../pages` 返回 **422 "Your current plan does not support GitHub
+Pages for this repository"**。要让其他电脑直接打开，只能把仓库改成公开——这一步涉及研究内容
+公开，我停下来问了用户，得到确认后才执行。
+
+#### 结果
+
+- 仓库改公开，Pages 从 `main` 分支的 `/docs` 目录发布；
+- 站点是纯静态文件，任何电脑直接打开链接即可，无需 Python、无需登录、无需后端。
+
+#### 定位
+
+- `scripts/build_site.py`、`docs/`（四个页面 + .nojekyll，入库）
+- `tests/test_build_site.py`（六项：页面齐备、互相链接、台账全量、日志非空、报告页格式化、无 fetch 调用）
+- `FINDINGS.md` 第 97 条
+
 
 
 

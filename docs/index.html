@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>总览 · A 股量化研究</title>
+<style>
+:root{--bg:#0b0f18;--panel:#131a27;--panel2:#0f1622;--border:#1f2a3d;--text:#dbe4f0;
+--muted:#7f8da3;--accent:#4ea1ff;--pos:#2fd18b;--neg:#ff5f7a;--warn:#f2b544}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,"Segoe UI",
+"Microsoft YaHei",system-ui,sans-serif}
+.num,code{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-variant-numeric:tabular-nums}
+header{padding:18px 24px 0;border-bottom:1px solid var(--border);
+background:linear-gradient(180deg,#111a28,#0b0f18)}
+h1{margin:0 0 4px;font-size:19px;font-weight:650}
+.sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{color:var(--muted);text-decoration:none;font-size:13.5px;padding:9px 16px;
+border-radius:8px 8px 0 0;border-bottom:2px solid transparent}
+nav a:hover{color:var(--text);background:#16203130}
+nav a.on{color:var(--accent);border-bottom-color:var(--accent);background:#162031}
+main{padding:20px 24px 64px;max-width:1500px;margin:0 auto}
+h2{font-size:16px;margin:28px 0 10px;font-weight:640}
+h2:first-child{margin-top:4px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.card .k{color:var(--muted);font-size:12px}
+.card .v{font-size:22px;font-weight:600;margin-top:4px}
+.card .h{color:var(--muted);font-size:11.5px;margin-top:2px}
+table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;
+margin-bottom:8px}
+th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);
+white-space:nowrap;font-size:13px}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{color:var(--muted);font-size:12px;background:var(--panel2);position:sticky;top:0}
+tbody tr:hover{background:#162031}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.note{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+.box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;
+margin-bottom:14px}
+.box.warn{border-color:#5a4620;background:#1d1a12}
+.box b{color:var(--text)}
+section.sec{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+padding:14px 18px;margin-bottom:12px}
+section.sec h3{margin:0 0 6px;font-size:14px;font-weight:640}
+details summary{cursor:pointer;color:var(--muted);font-size:12.5px}
+a{color:var(--accent)}
+footer{color:var(--muted);font-size:12px;padding:0 24px 40px;max-width:1500px;margin:0 auto}
+</style>
+</head>
+<body>
+<header><h1>A 股量化研究</h1><div class="sub">研究结论、证据强度与部署建议 · 静态页面，无需后端</div><nav><a href="index.html" class="on">总览</a><a href="findings.html">结论台账</a><a href="log.html">研究日志</a><a href="reports.html">报告索引</a></nav></header>
+<main><div class="cards"><div class="card"><div class="k">结论条数</div><div class="v">97</div><div class="h">其中高置信度 66 条</div></div><div class="card"><div class="k">研究日志</div><div class="v">192 节</div><div class="h">每节可追溯到脚本与报告</div></div><div class="card"><div class="k">报告目录</div><div class="v">106</div><div class="h">含净值、指标与结论</div></div><div class="card"><div class="k">测试</div><div class="v">450 项</div><div class="h">全部通过（生成时点）</div></div></div><div class="box warn"><b>先读这一条</b>：7.14 年的记录对真 Sharpe 0.90 只有 <b>56% 检出力</b>。「有效」不等于「已被证明」。任何收益数字都必须同时给出相位中位（0.668）而不是点估计（0.902）。</div><h2>决策备忘</h2><div class="box"><h1>决策备忘</h1>
+<p>&gt; 由 <code>scripts/build_decision_memo.py</code> 从 <code>reports/</code> 生成，<strong>不要手改</strong>。 &gt; <code>tests/test_decision_memo.py</code> 会比对本文与重新生成的结果，改数字必须改报告。</p>
+<h2>如果你只记得三件事</h2>
+<ol><li><strong>它是什么</strong>：在最平静的 8 只里剔除跌破趋势的那些，月度轮动。中位持有一只股票 32 个交易日，不是「买入并持有低波龙头」（§23.74/§23.91）。<strong>名字里的「低波打分」几乎是装饰</strong>——真正干活的是趋势过滤（见下面零件账）。</li><li><strong>它值多少</strong>：全期 +95.87% / Sharpe 0.902（部署口径）。但同一窗口的相位中位 Sharpe 只有 <strong>0.668</strong>——把 0.902 当成期望值是错的（§23.82）。</li><li><strong>别把它当成已证明</strong>：7.14 年的记录对真 Sharpe 0.90 只有 <strong>56%</strong> 检出力；打分本身确实有效（随机选股中位只有 0.116），但「有效」不等于「已被证明」。</li></ol>
+<h2>1. 现在该部署什么</h2>
+<table><thead><tr><th>项</th><th>取值</th></tr></thead><tbody><tr><td>组合</td><td>混合 20 相位等权（每相位各 1/20 资金）</td></tr><tr><td>选股</td><td>top_n=8，vol_window=60，trend_window=120，每行业≤2</td></tr><tr><td>调仓</td><td>每 20 个交易日，按自然年重置锚点</td></tr><tr><td>风险</td><td>目标年化波动 12%</td></tr></tbody></table>
+<p><strong>零件账</strong>——这层一层层拆下来，只有一个零件在干活（三段 Sharpe 增量，§23.110）：</p>
+<table><thead><tr><th>零件</th><th>2019-2021</th><th>2022-2023</th><th>2024-2026</th><th>结论</th></tr></thead><tbody><tr><td><strong>趋势过滤</strong></td><td>+0.60</td><td>-0.09</td><td>+0.18</td><td>主要贡献者，防的是下跌行情里抱着最平静的名字一起跌</td></tr><tr><td>0.8/0.2 打分混合</td><td>+0.00</td><td>+0.11</td><td>-0.18</td><td>平均为零；它确实会换掉约 1.1 只，但换掉的那只没有信息（§23.111，t=0.81）</td></tr><tr><td>PIT 池 vs 在册 128 只</td><td>-0.13</td><td>+0.16</td><td>+0.00</td><td>边际很小，退市群的有无不是主导因素（§23.109）</td></tr></tbody></table>
+<p>所以更准确的名字是：<strong>在最平静的 8 只里剔除跌破趋势的那些</strong>，而不是「低波打分 + 趋势确认」——后者会让人以为打分在做主要工作。</p>
+<p><strong>这台机器值在哪（这比「值多少」更重要）</strong>：把低波分换成随机分、其余约束全不变时， Sharpe 从 1.143 掉到中位 0.116（随机 p95 只有 0.459，发布策略在第 100 百分位，§23.102）。 <strong>但换成「最自然的替代品」就不一样了</strong>：在册 128 只里直接选最平静的 8 只、不加趋势过滤与行业上限（§23.109）——三段 ΔSharpe 只有 -1.11 / +0.04，<strong>6 格中 0 格显著</strong>，而它的换手只有发布策略的 1/3.9。 所以「打分有用」的准确版本是：<strong>相对随机有用；相对最自然的替代品，只有趋势过滤在 2019–2021 那种行情里明显值钱</strong>。 另外，低波分在<strong>仍在册</strong>名字上的池内 IC 只有 +0.031（§23.77），相对低波 1/3 篮子的增量超额也只有 +13.4%/年、t=1.77（§23.40）—— 这两条针对的是「在桶里精挑」，而上一段的正面结果针对的是「待在桶里」。</p>
+<p>选它的唯一理由是<strong>它是唯一不取决于「你从哪天开始数」的配置</strong>：单相位的 20 个等价日历 在 2024–2026 上收益跨度 40.9pp，而混合把这些日历等权拿住（§23.82/§23.83）。</p>
+<p><strong>上钱之前先跑验收</strong>：<code>python scripts/run_publish_check.py</code> —— 当前状态 <strong>通过</strong> （blend_reproducibility、fingerprint、blend_causality）。</p>
+<h2>2. 期望多少</h2>
+<table><thead><tr><th>口径</th><th>累计收益</th><th>Sharpe</th><th>最大回撤</th></tr></thead><tbody><tr><td>全期（7.14 年）</td><td>+95.87%</td><td>0.902</td><td>-15.70%</td></tr><tr><td>2024–2026</td><td>+26.29%</td><td>0.800</td><td>-12.10%</td></tr><tr><td>2024–2026 相位中位</td><td>+24.97%</td><td>0.668</td><td>—</td></tr><tr><td>2024–2026 最差相位</td><td>+9.13%</td><td>—</td><td>—</td></tr></tbody></table>
+<p><strong>不要把 Sharpe 0.902 当成已证明的数字。</strong> 自助法 95% 区间是 <strong>[0.098, 1.677]</strong>； 7.14 年的记录对真 Sharpe 0.90 只有 <strong>56%</strong> 检出力，80% 把握要 <strong>13.6 年</strong>（§23.89）。</p>
+<ul><li>年换手约 <strong>11.5x</strong>，中位持有一只在账 <strong>32 天</strong>（§23.91；混合会把持有拉长到周期的 1.6–1.7 倍）。</li><li>容量（18% target, 40bp impact）：100 万 Sharpe 0.745 → 2 亿 0.720 → 20 亿 0.674（§23.84）。</li></ul>
+<h2>3. 加仓前还缺什么</h2>
+<p>检出力只有 56%。想把「有效」从 suggestive 推到 established，只有下面五条路，而其中三条 已经被本仓实测证伪——所以这张表本身就是结论：</p>
+<table><thead><tr><th>路径</th><th>结论</th><th>依据</th></tr></thead><tbody><tr><td><strong>时间</strong></td><td>唯一确定有效，但慢：再跑 6.5 年</td><td>§23.89</td></tr><tr><td><strong>第二个 ≥120 只的市场</strong></td><td>有效，但需要外部数据：等效样本 1.54 倍，7.1 年变 10.9 年；60 只不够（随机子池中位 Sharpe 0.391、p10 0.059）</td><td>§23.93</td></tr><tr><td>更长的调仓周期</td><td><strong>不是杠杆</strong>：换手砍半但净 Sharpe 打平</td><td>§23.91</td></tr><tr><td>换执行时点</td><td><strong>不是杠杆</strong>：晚一天约 0.04 Sharpe，九格区间全含 0</td><td>§23.101</td></tr><tr><td>换检验统计量</td><td><strong>不是杠杆</strong>：符号检验 57% 检出力 vs Sharpe 区间 56%</td><td>§23.104</td></tr></tbody></table>
+<p><strong>明确写下什么会推翻上面的判断</strong>（这些是止损条件，不是预测）：</p>
+<ul><li>在册口径的低波 IC 跌破 0（当前 +0.031，§23.77）；</li><li>混合口径出现连续两个负自然年（历史上有 2022、2025 各一次，§23.86）；</li><li>实测成本超过 published 的两倍（§23.55 的 harsh 情景），且 60 日周期也救不回来；</li><li>可交易横截面继续收缩到 &lt;60 只，届时按 §23.93 的斜坡，期望 Sharpe 会掉到 0.4 一档。</li></ul></div></main>
+<footer>由 scripts/build_site.py 生成于 2026-11-08 23:10。数据为 2019-06 至 2026-11 的历史回测，不构成投资建议。</footer>
+</body>
+</html>

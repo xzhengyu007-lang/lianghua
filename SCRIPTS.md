@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 120 |
-| 在研究日志里出现过 | 78 |
-| 有对应测试 | 49 |
+| 脚本总数 | 121 |
+| 在研究日志里出现过 | 80 |
+| 有对应测试 | 50 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -62,13 +62,14 @@
 | `audit_decision_claims.py` | audit | ✓ | ✓ | Every claim on the decision page must trace back to an artifact. |
 | `audit_staleness.py` | audit | ✓ | ✓ | Which published results are now stale, and which citations point at nothing? |
 | `build_chained_equity.py` | build | ✓ | — | Stitch two consecutive walk-forward equity curves into one continuous series. |
-| `build_dashboard.py` | build | — | ✓ | Build a self-contained visual dashboard over the research artifacts. |
+| `build_dashboard.py` | build | ✓ | ✓ | Build a self-contained visual dashboard over the research artifacts. |
 | `build_data_manifest.py` | build | ✓ | ✓ | A manifest of the cached data, so a fresh checkout can prove it has the same data. |
 | `build_decision_memo.py` | build | ✓ | ✓ | One page that answers "should we put money on this?" without reading 93 sections. |
 | `build_delisted_universe.py` | build | ✓ | — | Build a point-in-time universe from real delisted names. |
 | `build_report_index.py` | build | — | — | Build reports/INDEX.md: one line per report directory with its headline metrics. |
 | `build_research_toc.py` | build | — | ✓ | Keep a table of contents at the top of RESEARCH_LOG.md. |
 | `build_script_inventory.py` | build | ✓ | ✓ | Inventory of every script: what it does, whether it is documented, whether it is tested. |
+| `build_site.py` | build | ✓ | ✓ | Build a self-contained static site for GitHub Pages. |
 | `build_total_return_cache.py` | build | ✓ | — | Persist rebuilt total-return series next to the provider cache. |
 | `check_artifact_fingerprints.py` | check | ✓ | ✓ | Fingerprint the upstream research artifacts so a silent change cannot hide. |
 | `check_ledger_replay.py` | check | ✓ | — | Verify the paper ledger reconciles with the backtester. |
