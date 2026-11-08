@@ -65,6 +65,12 @@
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 
+# 本地交易台（一条命令；只监听 127.0.0.1:8770，浏览器会自动打开）
+#   - 需要先有账本与建议卡（见下面两条命令），否则页面会明确告诉你缺什么
+.\.venv\Scripts\python.exe -m quant_system --universe broad paper --ledger reports\paper\ledger.json --init --cash 1000000
+.\.venv\Scripts\python.exe -m quant_system --universe pit --adjustment rebuilt advice --quotes --equity 1000000 --output reports\advice_today
+.\.venv\Scripts\python.exe scripts\desk_server.py
+
 # 下载/download 宽基股票池（128 只）与沪深 300，自动分页拼接长历史
 .\.venv\Scripts\python.exe -m quant_system --universe broad download --count 1800
 
@@ -149,6 +155,23 @@ python -m venv .venv
 | `attribution` | 对已完成的 `backtest`/`walkforward` 目录（`positions.csv` + `equity.csv`）做 Brinson-Fachler 月度行业归因：把相对等权全池的超额拆成行业配置 / 行业内选股 / 交互，残差为 1e-16 量级；`--report-dir` 指向被归因的报告，价格口径沿用全局 `--adjustment` |
 
 全局参数：`--universe {default,broad,pit}`、`--symbols`、`--min-bars`、`--benchmark`。
+
+### 本地交易台（`scripts/desk_server.py`）
+
+一条命令起一个**本机**交易台：`python scripts/desk_server.py`（默认 `127.0.0.1:8770`，只监听回环）。
+
+| 能力 | 说明 |
+|---|---|
+| 三栏布局 | 左：目标篮（现价/涨跌/状态灯）+ 模拟盘持仓与每日权益曲线 + 数据健康；中：K 线 + 成交量 + 成交标注（红涨绿跌，200–20000 根切换）；右：建议卡六要素 + 最近审计 + 免责 |
+| 行情 | 服务端一个 `QuotePoller` 轮询（3s、双源交叉校验），页面只读 `/api/state`——不会每个标签页各打一遍免费接口 |
+| 数据来源 | 全部读本仓产物（`card.json` / 账本 / `equity.jsonl` / `audit.jsonl` / `gate.json`）；页面自己不算任何一个数字 |
+| 操作 | 「生成计划」走完整七步（校验→限额→幂等→审计）、「全部停机」立刻 kill 并把级别打回 L1；两者都要二次确认；**界面不提供 L3 入口** |
+| 技术栈 | stdlib `ThreadingHTTPServer` + 原生 JS + 单个 vendored 图表文件（Apache-2.0）；**无 Node、无构建、无 CDN** |
+| 文档 | `docs/UI方案.md`（选型理由、10 万根方案、防误触、实测） |
+
+页面把"缺什么"说清楚而不是空白：没有账本/建议卡时给出该跑哪条命令；数据闸门关闭时只显示告警；
+命令行 `aq trade --action kill` 之后页面在 3 秒内变红（服务端每次读状态都检查 `gate.json` 的 mtime）。
+
 
 `pit` 股票池 = 128 只当前宽基 + `data/delisted_manifest.json` 中 140 只真实退市股，
 共 268 只（同窗口内至少有一根 K 线的 267 只）。退市股只在仍有个股 K 线的日期

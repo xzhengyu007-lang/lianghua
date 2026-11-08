@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>量化交易台</title>
+<link rel="stylesheet" href="/ui/desk.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <strong>交易台</strong>
+    <span class="dim" id="session">—</span>
+  </div>
+
+  <div class="badges">
+    <span class="badge" id="freshness" title="行情新鲜度">
+      <span class="dot" id="fresh-dot"></span><span id="fresh-text">连接中…</span>
+    </span>
+    <span class="badge sim" id="mode">模拟盘</span>
+    <span class="badge" id="gate-badge" title="交易级别">L1 模拟盘</span>
+    <span class="badge" id="gate-kill" title="kill switch">正常</span>
+  </div>
+
+  <div class="actions">
+    <button id="btn-plan" class="btn">生成计划</button>
+    <button id="btn-kill" class="btn danger">全部停机</button>
+    <button id="btn-reset" class="btn ghost">恢复</button>
+    <a class="btn ghost" href="/card" target="_blank" rel="noopener">建议卡</a>
+  </div>
+</header>
+
+<main class="grid">
+  <!-- 左栏：篮子 / 持仓 / 数据健康 -->
+  <section class="col left">
+    <div class="panel">
+      <h2>目标篮 <span class="dim" id="basket-meta"></span></h2>
+      <table class="tbl" id="basket">
+        <thead><tr><th>标的</th><th>名称</th><th class="r">现价</th><th class="r">涨跌</th><th>状态</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="hint" id="basket-hint">等待建议卡…</p>
+    </div>
+
+    <div class="panel">
+      <h2>模拟盘持仓 <span class="dim" id="ledger-meta"></span></h2>
+      <div class="kpis" id="ledger-kpis"></div>
+      <table class="tbl" id="equity">
+        <thead><tr><th>交易日</th><th class="r">权益</th><th class="r">当日</th><th class="r">回撤</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>数据健康</h2>
+      <div id="health" class="health"></div>
+    </div>
+  </section>
+
+  <!-- 中栏：K 线 -->
+  <section class="col mid">
+    <div class="panel chart-panel">
+      <div class="chart-head">
+        <h2>K 线 <span class="dim" id="chart-symbol"></span></h2>
+        <div class="chart-controls">
+          <select id="symbol-select"></select>
+          <button class="chip" data-limit="200">200 根</button>
+          <button class="chip" data-limit="600">600 根</button>
+          <button class="chip" data-limit="2000">2000 根</button>
+          <button class="chip" data-limit="20000">20000 根</button>
+        </div>
+      </div>
+      <div id="chart"></div>
+      <div class="chart-foot">
+        <span class="dim" id="chart-note">数据：重建总收益序列（与回测同一口径）</span>
+        <span class="dim" id="chart-legend">红涨绿跌</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 右栏：建议卡 + 审计 -->
+  <section class="col right">
+    <div class="panel">
+      <h2>今日建议卡</h2>
+      <div id="advice" class="advice"></div>
+    </div>
+    <div class="panel">
+      <h2>最近审计</h2>
+      <ul class="audit" id="audit"></ul>
+    </div>
+    <div class="panel disclaimer">
+      <strong>历史回测结果，不构成投资建议。</strong>
+      本页所有数字来自日频信号与本地产物；本仓库没有券商网关，页面上的任何按钮都不会发出真实委托。
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/ui/vendor/lightweight-charts.standalone.production.js"></script>
+<script src="/ui/desk.js"></script>
+</body>
+</html>
