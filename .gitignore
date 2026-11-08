@@ -17,3 +17,8 @@ reports/runs/
 .tmp_*
 logs/
 reports/
+
+# Temp-file droppings at the repo root: tests (and pytest's basetemp) create 0-byte
+# `tmpXXXXXXXX` files when the shell's TMPDIR resolves to the working directory.
+# Two of those got committed once (§23.115 added pytest-of-*; this closes the rest).
+tmp*

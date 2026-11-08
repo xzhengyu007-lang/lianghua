@@ -4,10 +4,10 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 127 |
+| 脚本总数 | 128 |
 | 在研究日志里出现过 | 84 |
 | 有对应测试 | 54 |
-| **两者都没有（孤儿）** | **41** |
+| **两者都没有（孤儿）** | **42** |
 
 ## 孤儿脚本（未记录、未测试）
 
@@ -16,6 +16,7 @@
 | `build_report_index.py` | build | 132 | Build reports/INDEX.md: one line per report directory with its headline metrics. |
 | `download_pit_raw.py` | download | 22 | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_rest.py` | download | 21 | Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19). |
+| `measure_realtime_sla.py` | other | 218 | Measure the realtime/advice SLAs the docs quote, so they cannot drift silently. |
 | `run_adjustment_audit.py` | run | 71 | Compare qfq / raw / rebuilt series on one window: the additive-adjustment problem (23.19). |
 | `run_adv_lookahead.py` | run | 63 | Does the ADV participation cap read volume the order is about to consume? (23.17) |
 | `run_baseline.py` | run | 153 | Full-period baseline: report, dashboard, and factor diagnostics. |
@@ -81,6 +82,7 @@
 | `download_pit_raw.py` | download | — | — | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_loop.py` | download | ✓ | — | Retry raw downloads for the PIT pool until every symbol has a cache. |
 | `download_pit_raw_rest.py` | download | — | — | Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19). |
+| `measure_realtime_sla.py` | other | — | — | Measure the realtime/advice SLAs the docs quote, so they cannot drift silently. |
 | `measure_window.py` | other | ✓ | ✓ | Where would the research window land if the extended history were used? |
 | `probe_delisted.py` | other | ✓ | — | Probe the kline endpoint for many codes and classify by last bar date. |
 | `rebuild_from_hfq.py` | other | ✓ | — | Rebuild a symbol's qfq cache from hfq rescaled to the latest raw close. |
