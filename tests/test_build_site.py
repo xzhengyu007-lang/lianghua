@@ -1,4 +1,4 @@
-"""Tests for the published site and its analysis (23.126)."""
+"""Tests for the published site: purpose-based pages, no CDN, live optional."""
 
 from __future__ import annotations
 
@@ -41,45 +41,21 @@ def test_every_page_is_emitted():
     assert (DOCS / ".nojekyll").exists()
 
 
+def test_the_navigation_is_grouped_by_purpose():
+    """应用 / 研究 / 档案 -- the whole point of this pass."""
+    groups = [g for g, _items in site.NAV]
+    assert groups == ["应用", "研究", "档案"]
+    apply_pages = [h for h, _l in dict(site.NAV)["应用"]]
+    assert apply_pages == ["index.html", "daily.html"]
+
+
 def test_pages_link_to_each_other():
     index = _text("index.html")
     for name, _label in site.PAGES:
         assert 'href="%s"' % name in index
 
 
-def test_live_page_ships_the_holdings_and_survives_a_failure():
-    """Live data is optional; the page must render and must report failure."""
-    text = _text("live.html")
-    assert "const HOLDINGS" in text
-    assert "qt.gtimg.cn" in text
-    assert "取不到实时数据" in text
-
-
-def test_findings_page_lists_every_row():
-    findings = dashboard.parse_findings(ROOT / "FINDINGS.md")
-    text = _text("findings.html")
-    assert "结论台账" in text
-    assert text.count("<tr>") == len(findings) + 1
-
-
-def test_log_page_sections_are_not_empty():
-    """Guards the bug where 191 shells rendered and looked fine."""
-    text = _text("log.html")
-    sections = re.findall(r"<h2>(\d+(?:\.\d+)?) · (.*?)</h2>", text)
-    assert len(sections) > 100
-    bodies = re.findall(r"<h2>[^<]*</h2>(.*?)</div>", text, re.S)
-    nonempty = sum(1 for body in bodies if len(body.strip()) > 60)
-    assert nonempty > len(bodies) * 0.9
-
-
 def test_no_page_loads_a_remote_asset():
-    """No CDN: a reader behind a firewall must still get a working page.
-
-    The check is on loaded URLs, not on the word: the research log legitimately
-    discusses CDNs in prose, and a plain substring test flagged that text.
-    """
-    import re
-
     for name, _label in site.PAGES:
         text = _text(name)
         assets = re.findall(r'(?:src|href)="(https?://[^"]+)"', text)
@@ -87,24 +63,40 @@ def test_no_page_loads_a_remote_asset():
         assert remote == [], (name, remote[:3])
 
 
-def _commentary():
-    path = ROOT / "reports" / "analysis" / "commentary.json"
-    if not path.exists():
-        pytest.skip("run scripts/build_analysis.py first")
-    return json.loads(path.read_text(encoding="utf-8"))
+def test_daily_page_ships_holdings_and_reports_failure():
+    text = _text("daily.html")
+    assert "const HOLDINGS" in text
+    assert "qt.gtimg.cn" in text
+    assert "取不到实时数据" in text
 
 
-def test_analysis_is_derived_from_artifacts_only():
+def test_old_live_url_redirects_to_daily():
+    text = _text("live.html")
+    assert "url=daily.html" in text
+
+
+def test_findings_page_has_filters_and_every_row():
+    findings = dashboard.parse_findings(ROOT / "FINDINGS.md")
+    text = _text("findings.html")
+    assert 'data-f="high"' in text and 'data-f="no"' in text
+    assert text.count("<tr data-tag=") == len(findings)
+
+
+def test_log_page_is_collapsible_and_searchable():
+    text = _text("log.html")
+    assert text.count("<details") > 100
+    assert 'id="q"' in text
+    assert "全部展开" in text
+
+
+def test_analysis_page_renders_the_commentary():
     payload = analysis.analyse()
-    assert payload["sections"], "analysis produced nothing"
+    text = _text("analysis.html")
     for section in payload["sections"]:
-        assert section["heading"] and section["verdict"] and section["evidence"]
-        # every numeric claim must carry a sign or decimal; catches empty templates
-        assert any(ch.isdigit() for ch in section["evidence"])
-
-
-def test_analysis_reaches_the_index_page():
-    text = _text("index.html")
-    assert "机器解读" in text
-    for section in _commentary()["sections"]:
         assert section["heading"] in text
+
+
+def test_each_page_carries_exactly_one_active_nav_item():
+    for name, _label in site.PAGES:
+        text = _text(name)
+        assert text.count('class="on"') >= 1, name

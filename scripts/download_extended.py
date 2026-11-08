@@ -88,10 +88,12 @@ def main(argv: list[str] | None = None) -> int:
             if depth(cache, symbol) >= args.target_rows:
                 continue
             try:
-                frame = provider.download(symbol, count=args.target_rows, adjust="", force=True)
-                rows = len(frame)
+                result = provider.download(symbol, count=args.target_rows, adjust="", force=True)
+                # download() returns a DownloadResult, not a frame: it already
+                # carries the row count and the span, so asking len() fails.
+                rows = int(result.rows)
                 streak = 0
-                print("  %s -> %d rows from %s" % (symbol, rows, frame.index.min().date()), flush=True)
+                print("  %s -> %d rows from %s" % (symbol, rows, result.start), flush=True)
                 log.append({"symbol": symbol, "rows": rows, "pass": attempt, "ok": True})
             except Exception as exc:
                 streak += 1

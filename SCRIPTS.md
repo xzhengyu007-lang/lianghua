@@ -70,7 +70,7 @@
 | `build_report_index.py` | build | — | — | Build reports/INDEX.md: one line per report directory with its headline metrics. |
 | `build_research_toc.py` | build | — | ✓ | Keep a table of contents at the top of RESEARCH_LOG.md. |
 | `build_script_inventory.py` | build | ✓ | ✓ | Inventory of every script: what it does, whether it is documented, whether it is tested. |
-| `build_site.py` | build | ✓ | ✓ | Build the published site: a designed, self-contained static page set. |
+| `build_site.py` | build | ✓ | ✓ | Build the published site: application-oriented, one job per page. |
 | `build_total_return_cache.py` | build | ✓ | — | Persist rebuilt total-return series next to the provider cache. |
 | `check_artifact_fingerprints.py` | check | ✓ | ✓ | Fingerprint the upstream research artifacts so a silent change cannot hide. |
 | `check_ledger_replay.py` | check | ✓ | — | Verify the paper ledger reconciles with the backtester. |
