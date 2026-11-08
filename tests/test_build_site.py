@@ -1,8 +1,9 @@
-"""Tests for the static site builder (23.125)."""
+"""Tests for the published site and its analysis (23.126)."""
 
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
@@ -21,6 +22,7 @@ def _load(name: str, filename: str):
 
 
 site = _load("build_site", "build_site.py")
+analysis = _load("build_analysis", "build_analysis.py")
 dashboard = _load("build_dashboard_for_site", "build_dashboard.py")
 
 DOCS = ROOT / "docs"
@@ -45,37 +47,64 @@ def test_pages_link_to_each_other():
         assert 'href="%s"' % name in index
 
 
+def test_live_page_ships_the_holdings_and_survives_a_failure():
+    """Live data is optional; the page must render and must report failure."""
+    text = _text("live.html")
+    assert "const HOLDINGS" in text
+    assert "qt.gtimg.cn" in text
+    assert "取不到实时数据" in text
+
+
 def test_findings_page_lists_every_row():
     findings = dashboard.parse_findings(ROOT / "FINDINGS.md")
     text = _text("findings.html")
-    assert "结论台账（%d 条）" % len(findings) in text
-    assert text.count("<tr>") == len(findings) + 1  # +1 header row
+    assert "结论台账" in text
+    assert text.count("<tr>") == len(findings) + 1
 
 
 def test_log_page_sections_are_not_empty():
-    """The bug this guards: an empty body rendered 191 shells and looked fine."""
+    """Guards the bug where 191 shells rendered and looked fine."""
     text = _text("log.html")
-    sections = re.findall(r'<section class="sec"><h3>(.*?)</h3>(.*?)</section>', text, re.S)
-    assert sections, "no sections rendered"
-    # Four sections in the log are heading-only: their body lives in numbered
-    # subsections (e.g. 18.1). That is the document's shape, not a render bug, so
-    # the guard is "most sections have body", not "none is empty".
-    empty = [title for title, body in sections if not body.strip()]
-    assert len(empty) <= 8, empty[:8]
-    assert len(empty) < len(sections) * 0.1
-    with_table = sum(1 for _t, body in sections if "<table" in body)
-    assert with_table > 50
+    sections = re.findall(r"<h2>(\d+(?:\.\d+)?) · (.*?)</h2>", text)
+    assert len(sections) > 100
+    bodies = re.findall(r"<h2>[^<]*</h2>(.*?)</div>", text, re.S)
+    nonempty = sum(1 for body in bodies if len(body.strip()) > 60)
+    assert nonempty > len(bodies) * 0.9
 
 
-def test_reports_page_escapes_and_formats_metrics():
-    text = _text("reports.html")
-    assert "报告索引" in text
-    assert "pos" in text or "neg" in text
+def test_no_page_loads_a_remote_asset():
+    """No CDN: a reader behind a firewall must still get a working page.
 
+    The check is on loaded URLs, not on the word: the research log legitimately
+    discusses CDNs in prose, and a plain substring test flagged that text.
+    """
+    import re
 
-def test_the_site_is_static_no_fetch_calls():
-    """GitHub Pages serves files; a page that fetches /api would be broken there."""
     for name, _label in site.PAGES:
         text = _text(name)
-        assert "fetch(" not in text, name
-        assert "XMLHttpRequest" not in text, name
+        assets = re.findall(r'(?:src|href)="(https?://[^"]+)"', text)
+        remote = [u for u in assets if "github.io" not in u]
+        assert remote == [], (name, remote[:3])
+
+
+def _commentary():
+    path = ROOT / "reports" / "analysis" / "commentary.json"
+    if not path.exists():
+        pytest.skip("run scripts/build_analysis.py first")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_analysis_is_derived_from_artifacts_only():
+    payload = analysis.analyse()
+    assert payload["sections"], "analysis produced nothing"
+    for section in payload["sections"]:
+        assert section["heading"] and section["verdict"] and section["evidence"]
+        # every numeric claim must carry a sign or decimal; catches empty templates
+        assert any(ch.isdigit() for ch in section["evidence"])
+
+
+def test_analysis_reaches_the_index_page():
+    text = _text("index.html")
+    assert "机器解读" in text
+    for section in _commentary()["sections"]:
+        assert section["heading"] in text

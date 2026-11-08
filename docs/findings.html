@@ -2,56 +2,138 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>结论台账 · A 股量化研究</title>
 <style>
-:root{--bg:#0b0f18;--panel:#131a27;--panel2:#0f1622;--border:#1f2a3d;--text:#dbe4f0;
---muted:#7f8da3;--accent:#4ea1ff;--pos:#2fd18b;--neg:#ff5f7a;--warn:#f2b544}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,"Segoe UI",
-"Microsoft YaHei",system-ui,sans-serif}
-.num,code{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-variant-numeric:tabular-nums}
-header{padding:18px 24px 0;border-bottom:1px solid var(--border);
-background:linear-gradient(180deg,#111a28,#0b0f18)}
-h1{margin:0 0 4px;font-size:19px;font-weight:650}
-.sub{color:var(--muted);font-size:12px;margin-bottom:14px}
-nav{display:flex;gap:4px;flex-wrap:wrap}
-nav a{color:var(--muted);text-decoration:none;font-size:13.5px;padding:9px 16px;
-border-radius:8px 8px 0 0;border-bottom:2px solid transparent}
-nav a:hover{color:var(--text);background:#16203130}
-nav a.on{color:var(--accent);border-bottom-color:var(--accent);background:#162031}
-main{padding:20px 24px 64px;max-width:1500px;margin:0 auto}
-h2{font-size:16px;margin:28px 0 10px;font-weight:640}
-h2:first-child{margin-top:4px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.card .k{color:var(--muted);font-size:12px}
-.card .v{font-size:22px;font-weight:600;margin-top:4px}
-.card .h{color:var(--muted);font-size:11.5px;margin-top:2px}
-table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;
-margin-bottom:8px}
-th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);
-white-space:nowrap;font-size:13px}
-th:first-child,td:first-child{text-align:left;white-space:normal}
-thead th{color:var(--muted);font-size:12px;background:var(--panel2);position:sticky;top:0}
-tbody tr:hover{background:#162031}
-.pos{color:var(--pos)}.neg{color:var(--neg)}
-.note{color:var(--muted);font-size:12.5px;margin:8px 0 0}
-.box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;
-margin-bottom:14px}
-.box.warn{border-color:#5a4620;background:#1d1a12}
-.box b{color:var(--text)}
-section.sec{background:var(--panel);border:1px solid var(--border);border-radius:10px;
-padding:14px 18px;margin-bottom:12px}
-section.sec h3{margin:0 0 6px;font-size:14px;font-weight:640}
-details summary{cursor:pointer;color:var(--muted);font-size:12.5px}
-a{color:var(--accent)}
-footer{color:var(--muted);font-size:12px;padding:0 24px 40px;max-width:1500px;margin:0 auto}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b12; --surface:#0f1522; --surface2:#141c2b; --line:#1e293b;
+  --line2:#2a3a52; --text:#e8eef8; --dim:#8494ab; --dim2:#5c6b82;
+  --acc:#5b9dff; --acc2:#7c5cff; --pos:#22d39a; --neg:#ff5c7c; --warn:#f5b942;
+  --glow:0 0 0 1px rgba(91,157,255,.12), 0 8px 32px -12px rgba(0,0,0,.8);
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(91,157,255,.10), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(124,92,255,.08), transparent 55%),
+    var(--bg);
+  color:var(--text); min-height:100vh;
+  font:14px/1.65 ui-sans-serif,-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;
+  background:rgba(91,157,255,.10);color:#a8c7ff;padding:1px 6px;border-radius:5px}
+
+.wrap{max-width:1220px;margin:0 auto;padding:0 28px}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:rgba(8,11,18,.78);border-bottom:1px solid var(--line)}
+.hd{display:flex;align-items:center;gap:20px;height:62px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:650;font-size:15.5px;letter-spacing:.2px}
+.logo{width:26px;height:26px;border-radius:7px;flex:none;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  box-shadow:0 0 18px -4px rgba(91,157,255,.7);position:relative}
+.logo::after{content:"";position:absolute;inset:6px;border-radius:3px;
+  border:1.5px solid rgba(255,255,255,.85);border-bottom-color:transparent;border-right-color:transparent}
+nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav a{color:var(--dim);text-decoration:none;font-size:13.5px;padding:7px 14px;border-radius:8px;
+  transition:.16s;white-space:nowrap}
+nav a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav a.on{color:#fff;background:linear-gradient(135deg,rgba(91,157,255,.22),rgba(124,92,255,.18));
+  box-shadow:inset 0 0 0 1px rgba(91,157,255,.35)}
+
+/* ---------- hero ---------- */
+.hero{padding:44px 0 26px}
+.eyebrow{color:var(--acc);font-size:12px;letter-spacing:1.6px;text-transform:uppercase;
+  font-weight:600;margin-bottom:12px}
+h1{font-size:34px;line-height:1.2;font-weight:680;letter-spacing:-.6px;margin-bottom:14px}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--dim);font-size:15px;max-width:720px}
+.lede b{color:var(--text);font-weight:600}
+
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:26px 0}
+.card{background:linear-gradient(180deg,var(--surface),rgba(15,21,34,.6));
+  border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--glow)}
+.card .k{color:var(--dim2);font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;
+  font-weight:600;margin-bottom:7px}
+.card .v{font-size:26px;font-weight:660;letter-spacing:-.5px;line-height:1.15}
+.card .h{color:var(--dim2);font-size:11.5px;margin-top:5px}
+.card.hl{border-color:rgba(91,157,255,.32);
+  background:linear-gradient(180deg,rgba(91,157,255,.10),rgba(15,21,34,.7))}
+
+/* ---------- panels ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:20px 22px;margin-bottom:16px;box-shadow:var(--glow)}
+.panel h2{font-size:15.5px;font-weight:640;letter-spacing:.1px;margin-bottom:4px;
+  display:flex;align-items:center;gap:9px}
+.panel h2::before{content:"";width:3px;height:15px;border-radius:2px;flex:none;
+  background:linear-gradient(180deg,var(--acc),var(--acc2))}
+.panel .sub{color:var(--dim2);font-size:12.5px;margin-bottom:14px}
+.panel.alert{border-color:rgba(245,185,66,.28);
+  background:linear-gradient(180deg,rgba(245,185,66,.07),var(--surface))}
+
+h3{font-size:14px;font-weight:640;margin:20px 0 8px;color:var(--text)}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:140px}
+thead th{color:var(--dim2);font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;
+  font-weight:650;background:var(--surface2);position:sticky;top:0}
+tbody tr{transition:.12s}
+tbody tr:hover{background:rgba(91,157,255,.06)}
+tbody tr:last-child td{border-bottom:0}
+.pos{color:var(--pos);font-weight:560}
+.neg{color:var(--neg);font-weight:560}
+.dim{color:var(--dim2)}
+
+/* ---------- charts ---------- */
+.chart{width:100%;height:auto;display:block;border-radius:10px;background:rgba(0,0,0,.22)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--dim)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+
+/* ---------- live ---------- */
+.live-top{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--dim);
+  margin-bottom:14px;flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim2);flex:none}
+.dot.on{background:var(--pos);box-shadow:0 0 0 3px rgba(34,211,154,.16);animation:pulse 2.4s infinite}
+.dot.err{background:var(--neg);box-shadow:0 0 0 3px rgba(255,92,124,.16)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:11px}
+.q{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;
+  transition:.16s}
+.q:hover{border-color:var(--line2);transform:translateY(-1px)}
+.q .sym{font-size:12px;color:var(--dim);letter-spacing:.5px}
+.q .px{font-size:19px;font-weight:640;letter-spacing:-.3px;margin:3px 0}
+.q .chg{font-size:12px;font-weight:600}
+.q.up{border-color:rgba(34,211,154,.3)}
+.q.down{border-color:rgba(255,92,124,.28)}
+
+/* ---------- misc ---------- */
+.note{color:var(--dim2);font-size:12.5px;line-height:1.7}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13px}
+.kv dt{color:var(--dim2)}
+.kv dd{color:var(--text)}
+ul.tight{margin:8px 0 0 18px;color:var(--dim);font-size:13px}
+ul.tight li{margin:5px 0}
+ul.tight b{color:var(--text)}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;color:var(--dim2);font-size:12px}
+@media(max-width:720px){
+  h1{font-size:26px} .wrap{padding:0 16px} .hd{height:auto;padding:10px 0;flex-wrap:wrap}
+  nav{margin-left:0;width:100%;overflow-x:auto}
+}
 </style>
 </head>
 <body>
-<header><h1>A 股量化研究</h1><div class="sub">每条结论的证据与置信度</div><nav><a href="index.html">总览</a><a href="findings.html" class="on">结论台账</a><a href="log.html">研究日志</a><a href="reports.html">报告索引</a></nav></header>
-<main><h2>结论台账（97 条）</h2><div class="note">置信度是判断这一条能不能被当作依据的核心。写「否」的方向是<b>已验证的负面结果</b>，不是没试过。</div><table><thead><tr><th>#</th><th>结论</th><th>依据</th><th>置信度</th><th>出处</th></tr></thead><tbody><tr><td></td><td>低波因子在 A 股这个池子里有效</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>8 只等权低波组合长期大幅跑赢等权全池</td><td></td><td>中</td><td></td></tr><tr><td></td><td>三段独立样本外绝对收益都为正</td><td></td><td>中</td><td></td></tr><tr><td></td><td>相对**低波 1/3 篮子**的增量超额很小</td><td></td><td>**低**</td><td></td></tr><tr><td></td><td>上述增量超额高度集中在少数月份</td><td></td><td>**低**</td><td></td></tr><tr><td></td><td>超额来自行业内选股，不是行业配置</td><td></td><td>**高**（相对等权全池口径）</td><td></td></tr><tr><td></td><td>价值集中在下跌月</td><td></td><td>中</td><td></td></tr><tr><td></td><td>`trend_window` 没有跨窗口最优值；120 是工程冻结，不是统计结论</td><td></td><td>**高**（方向不稳定）</td><td></td></tr><tr><td></td><td>调仓相位是最大噪声源</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>没有找到可用的第二信号；IC 显著也会在组合层失效</td><td></td><td>**高**（三段口径）</td><td></td></tr><tr><td></td><td>MAX 效应不是独立因子</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>波动率目标只能减仓；18% 目标等于不设限</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>12% 目标波动率稳定降回撤，但 Sharpe 增益不跨窗口一致</td><td></td><td>中</td><td></td></tr><tr><td></td><td>50M 资金 + 50bps 冲击成本下仍可执行</td><td></td><td>中</td><td></td></tr><tr><td></td><td>行业上限（`max_per_sector`）不该收紧到中性</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>退市股必须留在 PIT 池；去掉会创造假 alpha</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>回撤熔断、基准趋势开关默认都该关</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>2019–2021 第三独立窗口也取得正收益</td><td></td><td>中</td><td></td></tr><tr><td></td><td>**并非每个窗口都能跑赢基准**</td><td></td><td>**高**（对该窗口）</td><td></td></tr><tr><td></td><td>三窗口“绝对收益为正”一致，但“选股 alpha”未获证明</td><td></td><td>中</td><td></td></tr><tr><td></td><td>趋势过滤不能关闭，它是收益来源而非可删的保险</td><td></td><td>**高**（方向一致）</td><td></td></tr><tr><td></td><td>跌破均线补位没有稳定增益</td><td></td><td>中</td><td></td></tr><tr><td></td><td>静态 beta 对冲不是跨窗口稳健层</td><td></td><td>**高**（方向翻转）</td><td></td></tr><tr><td></td><td>研究用的日收益必须补回 `equity.csv` 缺失的第一天</td><td></td><td>**高**（已修复并加测试）</td><td></td></tr><tr><td></td><td>参数曲面很陡，默认点（8 只 / 60 日）是唯一三段都不掉队的格子</td><td></td><td>**高**（方向一致）</td><td></td></tr><tr><td></td><td>参数邻域平均不能修复陡峭参数面</td><td></td><td>**高**（三段口径）</td><td></td></tr><tr><td></td><td>任意 12 个月都是正收益，但超额主要来自基准下跌段</td><td></td><td>中（窗口重叠、基准偏弱）</td><td></td></tr><tr><td></td><td>12 个月 Sharpe 的 5–95% 跨度是 0.34–2.16，单段排序不可用</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>低波因子自身的 IC 也随窗口变化 2.5 倍</td><td></td><td>**高**</td><td></td></tr><tr><td></td><td>成本翻倍 + 滑点乘四 + 平方根冲击，三段结论不翻转</td><td></td><td>**高**（100 万资金口径）</td><td></td></tr><tr><td></td><td>市场广度**统计上**能预判下月超额，但**真实撮合后不可交易**</td><td></td><td>**高**（对“不可用”这一结论）</td><td></td></tr><tr><td></td><td>广度择时的有效性有时效，不是频率效应</td><td></td><td>中</td><td></td></tr><tr><td></td><td>前视偏差审计：打乱切点后的收益，切点前的净值必须逐位不动</td><td></td><td>是（管线级）</td><td></td></tr><tr><td></td><td>单段 2–3 年样本外的 Sharpe 95% 区间宽约 2.7，段间差异全是噪声</td><td></td><td>是（统计性质）</td><td></td></tr><tr><td></td><td>12% 是可达目标，18% 等于不设上限；波动预测窗口不是杠杆</td><td></td><td>是</td><td></td></tr><tr><td></td><td>成本情景不改变 12% 的判定：回撤全改善、Sharpe 全是噪声</td><td></td><td>是</td><td></td></tr><tr><td></td><td>3 年样本外结构上不可能证明 Sharpe 1.0；需要约 6 年</td><td></td><td>是（解析+模拟）</td><td></td></tr><tr><td></td><td>降风险预算不消除相位风险，相对离散基本不动</td><td></td><td>是（结构性，三段确认）</td><td></td></tr><tr><td></td><td>低波+趋势分的 IC 随持有期单调上升，是慢信号不是快信号</td><td></td><td>是</td><td></td></tr><tr><td></td><td>趋势分量 IC 为负，但删掉它不会更好</td><td></td><td>是</td><td></td></tr><tr><td></td><td>一键自检（数据/复现/因果）已脚本化，5.5 秒跑完三项全过</td><td></td><td>是</td><td></td></tr><tr><td></td><td>100 万本金下冲击项只有 0.7–1.1bp，成本敏感度来自固定项</td><td></td><td>是</td><td></td></tr><tr><td></td><td>八个自然年全部为正，但年度 Sharpe 从 0.22 到 1.98（**仅在运气相位下成立**，见 §23.86：混合口径下 2022 与 2025 为负）</td><td></td><td>是</td><td></td></tr><tr><td></td><td>容量瓶颈是冲击成本而非成交量上限</td><td></td><td>是（结构性，窗口内估计）</td><td></td></tr><tr><td></td><td>2025 走平年是低波逆风 + 桶内选股失效，连低波桶都跑输 6–8pp</td><td></td><td>是（描述性，11 个月毛口径，双日历）</td><td></td></tr><tr><td></td><td>“低波核心”实际是月度轮动：中位持有时长 20 个交易日</td><td></td><td>是（描述性，四段）</td><td></td></tr><tr><td></td><td>可交易性：PIT 池样本内从 251 只腰斩到 128 只，且 2019–2021 有 41.5% 的交易日冻着一个零方差槽位</td><td></td><td>是（描述性，四段）</td><td></td></tr><tr><td></td><td>低波 IC 的大头来自“高波股会死”，不是“低波股会赢”；宽度不是原因</td><td></td><td>**高**（全样本分解，跨 horizon 一致）</td><td></td></tr><tr><td></td><td>七个因子里只有低波有稳健的「池内」信号；Amihud 的 IC 是纯组间假象（辛普森悖论）</td><td></td><td>IC\</td><td></td></tr><tr><td></td><td>52 周高点距离叠加不是稳健增量：方向随窗口反转，是行情押注</td><td></td><td>**高**（方向不稳定，与 §23.46/§23.51 同形状）</td><td></td></tr><tr><td></td><td>早期两段 61–63% 的已实现盈亏来自最终退市的那批股票，该来源已结构性消失</td><td></td><td>**高**（三窗口成交口径，与 §23.75 结构一致）</td><td></td></tr><tr><td></td><td>「低波核心」的执行从未受池宽约束：不是凑不出 8 只</td><td></td><td>**高**（与策略同源，全样本）</td><td></td></tr><tr><td></td><td>同样的波动筛选换了一个宇宙：选中的 8 只从低价小票变成大盘股</td><td></td><td>**高**（与策略同源，三段一致）</td><td></td></tr><tr><td></td><td>年度重置没有消除相位彩票，发布的三段数字有两段落在好运侧</td><td></td><td>**高**（20 相位 × 2 锚点 × 3 窗口，重建口径）</td><td></td></tr><tr><td></td><td>相位平均降波动成立、落在中位不成立；它是唯一不靠日历运气的配置</td><td></td><td>**高**（三段一致，重建口径）</td><td></td></tr><tr><td></td><td>混合口径的容量曲线更平、执行漂移更小，代价是多 13% 换手</td><td></td><td>**高**（同代码路径，8 档资金 × 2 档冲击）</td><td></td></tr><tr><td></td><td>混合口径下 12% 目标波动仍该开，10% 被 12% 严格支配</td><td></td><td>**高**（三段 + 配对自助法）</td><td></td></tr><tr><td></td><td>发布配置（混合 + 12%）有两个负年，来自「混合」而非「降杠杆」；全期口径应下修到 +95.87%</td><td></td><td>**高**（四格连续回测 + 一致性检验）</td><td></td></tr><tr><td></td><td>发布配置（混合 + 12%）已纳入自检：可复现、指纹一致、切点前净值不动</td><td></td><td>**高**（三项硬检验）</td><td></td></tr><tr><td></td><td>对外引用口径已统一为一张有测试守着的事实表，旧数字保留但就近标注口径</td><td></td><td>**高**（测试守卫）</td><td></td></tr><tr><td></td><td>按可复现 Sharpe 0.90 重算：7.3 年只有 56% 检出力，80% 把握要 13.6 年</td><td></td><td>**高**（解析 + 5000 次模拟 + 自助法）</td><td></td></tr><tr><td></td><td>面板可直接跑部署口径（混合 + 12%），语义由服务端拥有</td><td></td><td>**高**（API 实测）</td><td></td></tr><tr><td></td><td>调仓周期不是 Sharpe 杠杆，但 60 日把换手砍一半（净 Sharpe 打平）</td><td></td><td>**高**（三段 + 配对自助法，0/12 显著）</td><td></td></tr><tr><td></td><td>按行业切池会打死策略：低波核心吃的是跨行业宽度，不是多个独立池</td><td></td><td>**高**（全样本，结构清晰）</td><td></td></tr><tr><td></td><td>随机子池：宽度是连续斜坡（每翻倍约 +0.4 Sharpe），杀死行业池的是集中而非窄</td><td></td><td>**高**（120 次抽样）</td><td></td></tr><tr><td></td><td>决策备忘已固化为生成物（DECISION.md），并由测试逐字比对防止漂移</td><td></td><td>**高**（生成 + 测试）</td><td></td></tr><tr><td></td><td>新增新鲜度与引用审计：关键报告 12/12 新鲜，台账引用 0 处失效</td><td></td><td>**高**（脚本 + 测试）</td><td></td></tr><tr><td></td><td>决策关键集可一条命令重跑，且登记表与审计的关键集由测试互锁</td><td></td><td>**高**（脚本 + 测试 + 实跑）</td><td></td></tr><tr><td></td><td>端到端演练全部走通，并暴露一个文档陷阱：cache-audit 恒以退出码 1 结束</td><td></td><td>**高**（实跑 + 测试）</td><td></td></tr><tr><td></td><td>反向审计：106 个脚本中 42 个既未记录也未测试；其中 9 个连 docstring 都没有，已补齐</td><td></td><td>**高**（文件级扫描 + 测试）</td><td></td></tr><tr><td></td><td>五个上游研究产物已加内容指纹，一字节差异可定位到文件；负对照验证有效</td><td></td><td>**高**（负对照 + 六项测试）</td><td></td></tr><tr><td></td><td>5bp 滑点在低价窗口里不可能：tick 隐含的单边价差 2019–21 为 10.5bp、2022–23 为 9.1bp，2024–26 只有 4.8bp</td><td></td><td>**中**（算术确定，但执行假设未验证）</td><td></td></tr><tr><td></td><td>执行时点不是致命假设：晚一天只掉约 0.04 个 Sharpe，九格配对区间全部含 0</td><td></td><td>**高**（三段 × 3 延迟 + 配对自助法）</td><td></td></tr><tr><td></td><td>随机选股对照：同池同约束下把打分换成随机，Sharpe 从 1.143 掉到中位 0.116（第 100 百分位）</td><td></td><td>**高**（100 次抽样，间隔远超相位噪声）</td><td></td></tr><tr><td></td><td>决策页已把「值在哪」与「值多少」并列写清；测试的三个环境陷阱已写进手册</td><td></td><td>**高**（生成 + 测试）</td><td></td></tr><tr><td></td><td>季度符号检验并不比 Sharpe 区间更有检出力：57% vs 56%，80% 把握需 51 个季度</td><td></td><td>**高**（解析检出力 + 实测）</td><td></td></tr><tr><td></td><td>检出力五条路：三条已证伪，剩下时间与第二个市场；决策页第 3 节改为生成式表格</td><td></td><td>**高**（收口 + 生成 + 测试）</td><td></td></tr><tr><td></td><td>决策页声明审计：13 处引用、20 个数字全部可追到产物，0 处孤儿</td><td></td><td>**高**（负对照 + 七项测试）</td><td></td></tr><tr><td></td><td>方法论：本轮五处自我推翻只有三种失效模式——过度解读、归因混淆、手抄可生成的数字</td><td></td><td>**是**（方法论，非统计结论）</td><td></td></tr><tr><td></td><td>入口收口：决策页与 README 开头给出「三件事」；并补上关键集未覆盖决策页全部依赖的漏洞</td><td></td><td>**高**（生成 + 互锁测试）</td><td></td></tr><tr><td></td><td>与「最自然的大盘低波替代品」对打：六格全部不显著，优势主要是趋势过滤而非打分</td><td></td><td>**高**（三段 × 3 变体 + 配对自助法）</td><td></td></tr><tr><td></td><td>2×2 消融：趋势过滤值钱（+0.60/−0.09/+0.18），打分混合几乎不做事（0.00/+0.11/−0.19）</td><td></td><td>**高**（2×2 + 配对自助法，方向一致）</td><td></td></tr><tr><td></td><td>0.8/0.2 混合不是装饰（71% 的调仓会换掉约 1.1 只），但换掉的那只没有信息</td><td></td><td>**高**（91 次调仓逐日比对）</td><td></td></tr><tr><td></td><td>对外描述已按零件账改写：真正干活的是趋势过滤，低波打分「几乎是装饰」</td><td></td><td>**高**（生成 + 测试）</td><td></td></tr><tr><td></td><td>破坏性可复现性检验通过：删除 5 个关键报告再重生成，产物逐字节相同；指纹覆盖扩到 18 报告 / 50 文件</td><td></td><td>**高**（实测两批 + 哈希比对）</td><td></td></tr><tr><td></td><td>新增数据清单：808 个缓存文件的哈希与形状入库（121 KiB），可核对&quot;拿到的是不是作者那份&quot;</td><td></td><td>**高**（负对照 + 四项测试）</td><td></td></tr><tr><td></td><td>整体交付检查七项全绿；同时查出并清理了 246 个被提交的 pytest 临时文件</td><td></td><td>**高**（实跑 + 守卫测试）</td><td></td></tr><tr><td></td><td>趋势过滤窗口单调：窗口越长越好，SMA250 在相位混合后于三个窗口全胜 SMA120（+0.51/+0.19/+0.34）</td><td></td><td>**中**（§23.118 修正：并非单调，250 是内点峰且与 300 不可分辨）</td><td></td></tr><tr><td></td><td>trend_window=250 过重发布四关：Sharpe +0.318、回撤更浅 5.6pp、换手更低、相位分布整体上移</td><td></td><td>**高**（相位分布 + 逐年 + 三方向一致）</td><td></td></tr><tr><td></td><td>自我修正：「窗口越长越好」是扫描停在 250 造成的假象；250 是内点峰但与 300 不可分辨</td><td></td><td>**高**（6 点扫描 + 相位跨度对照）</td><td></td></tr><tr><td></td><td>四次教训已整理为 RUNBOOK §7 的六条可执行自检清单，并记下两处未解决的外部约束</td><td></td><td>**高**（实跑 + 测试）</td><td></td></tr><tr><td></td><td>第 16–40 轮收尾：443 项测试、六项检查全绿、119 节日志、91 条台账；未改任何发布配置</td><td></td><td>**高**（实跑核对）</td><td></td></tr><tr><td></td><td>2019-06 的样本起点是下载参数（--count 1800），不是数据源限制：调大后单票可回溯到 2010</td><td></td><td>**高**（元数据 + 试点实测）</td><td></td></tr><tr><td></td><td>长历史下下来之后窗口只退到 2018（子集），卡住的是 95% 活跃比例规则而非数据；全样本晚上市者约 3.9% &lt; 5%，理论上可退到 2010</td><td></td><td>**中高**（子集实测 + 全样本算术，后者未实测）</td><td></td></tr><tr><td></td><td>样本延长的执行验证：raw 4000 根干净到 2010（零非正价格），唯一阻塞是 provider 限流</td><td></td><td>**高**（raw 实测 + 限流复现）</td><td></td></tr><tr><td></td><td>延长样本的下载已改为可断点续传：够深即跳过、连续失败退避、结束按剩余数返回非零</td><td></td><td>**高**（dry-run + 实跑进度）</td><td></td></tr><tr><td></td><td>研究成果已发布为纯静态站点（docs/，四页 + .nojekyll），任何电脑可直接打开</td><td></td><td>**高**（浏览器实测 + 六项测试）</td><td></td></tr></tbody></table></main>
-<footer>由 scripts/build_site.py 生成于 2026-11-08 23:14。数据为 2019-06 至 2026-11 的历史回测，不构成投资建议。</footer>
+<header><div class="wrap hd"><div class="brand"><span class="logo"></span>A 股量化研究</div><nav><a href="index.html">总览</a><a href="live.html">实时</a><a href="findings.html" class="on">结论台账</a><a href="log.html">研究日志</a><a href="reports.html">报告索引</a></nav></div></header>
+<div class="wrap"><div class="hero"><div class="eyebrow">Findings</div><h1>结论台账 <em>98 条</em></h1><p class="lede">置信度是判断能不能当作依据的核心。写「否」的方向是<b>已验证的负面结果</b>，不是没试过。</p></div><div class="panel"><div class="scroll"><table><thead><tr><th>#</th><th>结论</th><th>依据</th><th>置信度</th><th>出处</th></tr></thead><tbody><tr><td></td><td>低波因子在 A 股这个池子里有效</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>8 只等权低波组合长期大幅跑赢等权全池</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>三段独立样本外绝对收益都为正</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>相对**低波 1/3 篮子**的增量超额很小</td><td></td><td><span class="dim">**低**</span></td><td class="dim"></td></tr><tr><td></td><td>上述增量超额高度集中在少数月份</td><td></td><td><span class="dim">**低**</span></td><td class="dim"></td></tr><tr><td></td><td>超额来自行业内选股，不是行业配置</td><td></td><td><span class="dim">**高**（相对等权全池口径）</span></td><td class="dim"></td></tr><tr><td></td><td>价值集中在下跌月</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>`trend_window` 没有跨窗口最优值；120 是工程冻结，不是统计结论</td><td></td><td><span class="dim">**高**（方向不稳定）</span></td><td class="dim"></td></tr><tr><td></td><td>调仓相位是最大噪声源</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>没有找到可用的第二信号；IC 显著也会在组合层失效</td><td></td><td><span class="dim">**高**（三段口径）</span></td><td class="dim"></td></tr><tr><td></td><td>MAX 效应不是独立因子</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>波动率目标只能减仓；18% 目标等于不设限</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>12% 目标波动率稳定降回撤，但 Sharpe 增益不跨窗口一致</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>50M 资金 + 50bps 冲击成本下仍可执行</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>行业上限（`max_per_sector`）不该收紧到中性</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>退市股必须留在 PIT 池；去掉会创造假 alpha</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>回撤熔断、基准趋势开关默认都该关</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>2019–2021 第三独立窗口也取得正收益</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>**并非每个窗口都能跑赢基准**</td><td></td><td><span class="dim">**高**（对该窗口）</span></td><td class="dim"></td></tr><tr><td></td><td>三窗口“绝对收益为正”一致，但“选股 alpha”未获证明</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>趋势过滤不能关闭，它是收益来源而非可删的保险</td><td></td><td><span class="dim">**高**（方向一致）</span></td><td class="dim"></td></tr><tr><td></td><td>跌破均线补位没有稳定增益</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>静态 beta 对冲不是跨窗口稳健层</td><td></td><td><span class="dim">**高**（方向翻转）</span></td><td class="dim"></td></tr><tr><td></td><td>研究用的日收益必须补回 `equity.csv` 缺失的第一天</td><td></td><td><span class="dim">**高**（已修复并加测试）</span></td><td class="dim"></td></tr><tr><td></td><td>参数曲面很陡，默认点（8 只 / 60 日）是唯一三段都不掉队的格子</td><td></td><td><span class="dim">**高**（方向一致）</span></td><td class="dim"></td></tr><tr><td></td><td>参数邻域平均不能修复陡峭参数面</td><td></td><td><span class="dim">**高**（三段口径）</span></td><td class="dim"></td></tr><tr><td></td><td>任意 12 个月都是正收益，但超额主要来自基准下跌段</td><td></td><td><span class="dim">中（窗口重叠、基准偏弱）</span></td><td class="dim"></td></tr><tr><td></td><td>12 个月 Sharpe 的 5–95% 跨度是 0.34–2.16，单段排序不可用</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>低波因子自身的 IC 也随窗口变化 2.5 倍</td><td></td><td><span class="dim">**高**</span></td><td class="dim"></td></tr><tr><td></td><td>成本翻倍 + 滑点乘四 + 平方根冲击，三段结论不翻转</td><td></td><td><span class="dim">**高**（100 万资金口径）</span></td><td class="dim"></td></tr><tr><td></td><td>市场广度**统计上**能预判下月超额，但**真实撮合后不可交易**</td><td></td><td><span class="dim">**高**（对“不可用”这一结论）</span></td><td class="dim"></td></tr><tr><td></td><td>广度择时的有效性有时效，不是频率效应</td><td></td><td><span class="dim">中</span></td><td class="dim"></td></tr><tr><td></td><td>前视偏差审计：打乱切点后的收益，切点前的净值必须逐位不动</td><td></td><td><span class="dim">是（管线级）</span></td><td class="dim"></td></tr><tr><td></td><td>单段 2–3 年样本外的 Sharpe 95% 区间宽约 2.7，段间差异全是噪声</td><td></td><td><span class="dim">是（统计性质）</span></td><td class="dim"></td></tr><tr><td></td><td>12% 是可达目标，18% 等于不设上限；波动预测窗口不是杠杆</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>成本情景不改变 12% 的判定：回撤全改善、Sharpe 全是噪声</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>3 年样本外结构上不可能证明 Sharpe 1.0；需要约 6 年</td><td></td><td><span class="dim">是（解析+模拟）</span></td><td class="dim"></td></tr><tr><td></td><td>降风险预算不消除相位风险，相对离散基本不动</td><td></td><td><span class="dim">是（结构性，三段确认）</span></td><td class="dim"></td></tr><tr><td></td><td>低波+趋势分的 IC 随持有期单调上升，是慢信号不是快信号</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>趋势分量 IC 为负，但删掉它不会更好</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>一键自检（数据/复现/因果）已脚本化，5.5 秒跑完三项全过</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>100 万本金下冲击项只有 0.7–1.1bp，成本敏感度来自固定项</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>八个自然年全部为正，但年度 Sharpe 从 0.22 到 1.98（**仅在运气相位下成立**，见 §23.86：混合口径下 2022 与 2025 为负）</td><td></td><td><span class="dim">是</span></td><td class="dim"></td></tr><tr><td></td><td>容量瓶颈是冲击成本而非成交量上限</td><td></td><td><span class="dim">是（结构性，窗口内估计）</span></td><td class="dim"></td></tr><tr><td></td><td>2025 走平年是低波逆风 + 桶内选股失效，连低波桶都跑输 6–8pp</td><td></td><td><span class="dim">是（描述性，11 个月毛口径，双日历）</span></td><td class="dim"></td></tr><tr><td></td><td>“低波核心”实际是月度轮动：中位持有时长 20 个交易日</td><td></td><td><span class="dim">是（描述性，四段）</span></td><td class="dim"></td></tr><tr><td></td><td>可交易性：PIT 池样本内从 251 只腰斩到 128 只，且 2019–2021 有 41.5% 的交易日冻着一个零方差槽位</td><td></td><td><span class="dim">是（描述性，四段）</span></td><td class="dim"></td></tr><tr><td></td><td>低波 IC 的大头来自“高波股会死”，不是“低波股会赢”；宽度不是原因</td><td></td><td><span class="dim">**高**（全样本分解，跨 horizon 一致）</span></td><td class="dim"></td></tr><tr><td></td><td>七个因子里只有低波有稳健的「池内」信号；Amihud 的 IC 是纯组间假象（辛普森悖论）</td><td></td><td><span class="dim">IC\</span></td><td class="dim"></td></tr><tr><td></td><td>52 周高点距离叠加不是稳健增量：方向随窗口反转，是行情押注</td><td></td><td><span class="dim">**高**（方向不稳定，与 §23.46/§23.51 同形状）</span></td><td class="dim"></td></tr><tr><td></td><td>早期两段 61–63% 的已实现盈亏来自最终退市的那批股票，该来源已结构性消失</td><td></td><td><span class="dim">**高**（三窗口成交口径，与 §23.75 结构一致）</span></td><td class="dim"></td></tr><tr><td></td><td>「低波核心」的执行从未受池宽约束：不是凑不出 8 只</td><td></td><td><span class="dim">**高**（与策略同源，全样本）</span></td><td class="dim"></td></tr><tr><td></td><td>同样的波动筛选换了一个宇宙：选中的 8 只从低价小票变成大盘股</td><td></td><td><span class="dim">**高**（与策略同源，三段一致）</span></td><td class="dim"></td></tr><tr><td></td><td>年度重置没有消除相位彩票，发布的三段数字有两段落在好运侧</td><td></td><td><span class="dim">**高**（20 相位 × 2 锚点 × 3 窗口，重建口径）</span></td><td class="dim"></td></tr><tr><td></td><td>相位平均降波动成立、落在中位不成立；它是唯一不靠日历运气的配置</td><td></td><td><span class="dim">**高**（三段一致，重建口径）</span></td><td class="dim"></td></tr><tr><td></td><td>混合口径的容量曲线更平、执行漂移更小，代价是多 13% 换手</td><td></td><td><span class="dim">**高**（同代码路径，8 档资金 × 2 档冲击）</span></td><td class="dim"></td></tr><tr><td></td><td>混合口径下 12% 目标波动仍该开，10% 被 12% 严格支配</td><td></td><td><span class="dim">**高**（三段 + 配对自助法）</span></td><td class="dim"></td></tr><tr><td></td><td>发布配置（混合 + 12%）有两个负年，来自「混合」而非「降杠杆」；全期口径应下修到 +95.87%</td><td></td><td><span class="dim">**高**（四格连续回测 + 一致性检验）</span></td><td class="dim"></td></tr><tr><td></td><td>发布配置（混合 + 12%）已纳入自检：可复现、指纹一致、切点前净值不动</td><td></td><td><span class="dim">**高**（三项硬检验）</span></td><td class="dim"></td></tr><tr><td></td><td>对外引用口径已统一为一张有测试守着的事实表，旧数字保留但就近标注口径</td><td></td><td><span class="dim">**高**（测试守卫）</span></td><td class="dim"></td></tr><tr><td></td><td>按可复现 Sharpe 0.90 重算：7.3 年只有 56% 检出力，80% 把握要 13.6 年</td><td></td><td><span class="dim">**高**（解析 + 5000 次模拟 + 自助法）</span></td><td class="dim"></td></tr><tr><td></td><td>面板可直接跑部署口径（混合 + 12%），语义由服务端拥有</td><td></td><td><span class="dim">**高**（API 实测）</span></td><td class="dim"></td></tr><tr><td></td><td>调仓周期不是 Sharpe 杠杆，但 60 日把换手砍一半（净 Sharpe 打平）</td><td></td><td><span class="dim">**高**（三段 + 配对自助法，0/12 显著）</span></td><td class="dim"></td></tr><tr><td></td><td>按行业切池会打死策略：低波核心吃的是跨行业宽度，不是多个独立池</td><td></td><td><span class="dim">**高**（全样本，结构清晰）</span></td><td class="dim"></td></tr><tr><td></td><td>随机子池：宽度是连续斜坡（每翻倍约 +0.4 Sharpe），杀死行业池的是集中而非窄</td><td></td><td><span class="dim">**高**（120 次抽样）</span></td><td class="dim"></td></tr><tr><td></td><td>决策备忘已固化为生成物（DECISION.md），并由测试逐字比对防止漂移</td><td></td><td><span class="dim">**高**（生成 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>新增新鲜度与引用审计：关键报告 12/12 新鲜，台账引用 0 处失效</td><td></td><td><span class="dim">**高**（脚本 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>决策关键集可一条命令重跑，且登记表与审计的关键集由测试互锁</td><td></td><td><span class="dim">**高**（脚本 + 测试 + 实跑）</span></td><td class="dim"></td></tr><tr><td></td><td>端到端演练全部走通，并暴露一个文档陷阱：cache-audit 恒以退出码 1 结束</td><td></td><td><span class="dim">**高**（实跑 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>反向审计：106 个脚本中 42 个既未记录也未测试；其中 9 个连 docstring 都没有，已补齐</td><td></td><td><span class="dim">**高**（文件级扫描 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>五个上游研究产物已加内容指纹，一字节差异可定位到文件；负对照验证有效</td><td></td><td><span class="dim">**高**（负对照 + 六项测试）</span></td><td class="dim"></td></tr><tr><td></td><td>5bp 滑点在低价窗口里不可能：tick 隐含的单边价差 2019–21 为 10.5bp、2022–23 为 9.1bp，2024–26 只有 4.8bp</td><td></td><td><span class="dim">**中**（算术确定，但执行假设未验证）</span></td><td class="dim"></td></tr><tr><td></td><td>执行时点不是致命假设：晚一天只掉约 0.04 个 Sharpe，九格配对区间全部含 0</td><td></td><td><span class="dim">**高**（三段 × 3 延迟 + 配对自助法）</span></td><td class="dim"></td></tr><tr><td></td><td>随机选股对照：同池同约束下把打分换成随机，Sharpe 从 1.143 掉到中位 0.116（第 100 百分位）</td><td></td><td><span class="dim">**高**（100 次抽样，间隔远超相位噪声）</span></td><td class="dim"></td></tr><tr><td></td><td>决策页已把「值在哪」与「值多少」并列写清；测试的三个环境陷阱已写进手册</td><td></td><td><span class="dim">**高**（生成 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>季度符号检验并不比 Sharpe 区间更有检出力：57% vs 56%，80% 把握需 51 个季度</td><td></td><td><span class="dim">**高**（解析检出力 + 实测）</span></td><td class="dim"></td></tr><tr><td></td><td>检出力五条路：三条已证伪，剩下时间与第二个市场；决策页第 3 节改为生成式表格</td><td></td><td><span class="dim">**高**（收口 + 生成 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>决策页声明审计：13 处引用、20 个数字全部可追到产物，0 处孤儿</td><td></td><td><span class="dim">**高**（负对照 + 七项测试）</span></td><td class="dim"></td></tr><tr><td></td><td>方法论：本轮五处自我推翻只有三种失效模式——过度解读、归因混淆、手抄可生成的数字</td><td></td><td><span class="dim">**是**（方法论，非统计结论）</span></td><td class="dim"></td></tr><tr><td></td><td>入口收口：决策页与 README 开头给出「三件事」；并补上关键集未覆盖决策页全部依赖的漏洞</td><td></td><td><span class="dim">**高**（生成 + 互锁测试）</span></td><td class="dim"></td></tr><tr><td></td><td>与「最自然的大盘低波替代品」对打：六格全部不显著，优势主要是趋势过滤而非打分</td><td></td><td><span class="dim">**高**（三段 × 3 变体 + 配对自助法）</span></td><td class="dim"></td></tr><tr><td></td><td>2×2 消融：趋势过滤值钱（+0.60/−0.09/+0.18），打分混合几乎不做事（0.00/+0.11/−0.19）</td><td></td><td><span class="dim">**高**（2×2 + 配对自助法，方向一致）</span></td><td class="dim"></td></tr><tr><td></td><td>0.8/0.2 混合不是装饰（71% 的调仓会换掉约 1.1 只），但换掉的那只没有信息</td><td></td><td><span class="dim">**高**（91 次调仓逐日比对）</span></td><td class="dim"></td></tr><tr><td></td><td>对外描述已按零件账改写：真正干活的是趋势过滤，低波打分「几乎是装饰」</td><td></td><td><span class="dim">**高**（生成 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>破坏性可复现性检验通过：删除 5 个关键报告再重生成，产物逐字节相同；指纹覆盖扩到 18 报告 / 50 文件</td><td></td><td><span class="dim">**高**（实测两批 + 哈希比对）</span></td><td class="dim"></td></tr><tr><td></td><td>新增数据清单：808 个缓存文件的哈希与形状入库（121 KiB），可核对&quot;拿到的是不是作者那份&quot;</td><td></td><td><span class="dim">**高**（负对照 + 四项测试）</span></td><td class="dim"></td></tr><tr><td></td><td>整体交付检查七项全绿；同时查出并清理了 246 个被提交的 pytest 临时文件</td><td></td><td><span class="dim">**高**（实跑 + 守卫测试）</span></td><td class="dim"></td></tr><tr><td></td><td>趋势过滤窗口单调：窗口越长越好，SMA250 在相位混合后于三个窗口全胜 SMA120（+0.51/+0.19/+0.34）</td><td></td><td><span class="dim">**中**（§23.118 修正：并非单调，250 是内点峰且与 300 不可分辨）</span></td><td class="dim"></td></tr><tr><td></td><td>trend_window=250 过重发布四关：Sharpe +0.318、回撤更浅 5.6pp、换手更低、相位分布整体上移</td><td></td><td><span class="dim">**高**（相位分布 + 逐年 + 三方向一致）</span></td><td class="dim"></td></tr><tr><td></td><td>自我修正：「窗口越长越好」是扫描停在 250 造成的假象；250 是内点峰但与 300 不可分辨</td><td></td><td><span class="dim">**高**（6 点扫描 + 相位跨度对照）</span></td><td class="dim"></td></tr><tr><td></td><td>四次教训已整理为 RUNBOOK §7 的六条可执行自检清单，并记下两处未解决的外部约束</td><td></td><td><span class="dim">**高**（实跑 + 测试）</span></td><td class="dim"></td></tr><tr><td></td><td>第 16–40 轮收尾：443 项测试、六项检查全绿、119 节日志、91 条台账；未改任何发布配置</td><td></td><td><span class="dim">**高**（实跑核对）</span></td><td class="dim"></td></tr><tr><td></td><td>2019-06 的样本起点是下载参数（--count 1800），不是数据源限制：调大后单票可回溯到 2010</td><td></td><td><span class="dim">**高**（元数据 + 试点实测）</span></td><td class="dim"></td></tr><tr><td></td><td>长历史下下来之后窗口只退到 2018（子集），卡住的是 95% 活跃比例规则而非数据；全样本晚上市者约 3.9% &lt; 5%，理论上可退到 2010</td><td></td><td><span class="dim">**中高**（子集实测 + 全样本算术，后者未实测）</span></td><td class="dim"></td></tr><tr><td></td><td>样本延长的执行验证：raw 4000 根干净到 2010（零非正价格），唯一阻塞是 provider 限流</td><td></td><td><span class="dim">**高**（raw 实测 + 限流复现）</span></td><td class="dim"></td></tr><tr><td></td><td>延长样本的下载已改为可断点续传：够深即跳过、连续失败退避、结束按剩余数返回非零</td><td></td><td><span class="dim">**高**（dry-run + 实跑进度）</span></td><td class="dim"></td></tr><tr><td></td><td>研究成果已发布为纯静态站点（docs/，四页 + .nojekyll），任何电脑可直接打开</td><td></td><td><span class="dim">**高**（浏览器实测 + 六项测试）</span></td><td class="dim"></td></tr><tr><td></td><td>站点改版：设计化 UI、浏览器直连的实时行情页、产物驱动的「机器解读」四段分析</td><td></td><td><span class="dim">**高**（浏览器实测 + 八项测试）</span></td><td class="dim"></td></tr></tbody></table></div></div></div>
+<footer><div class="wrap">由 <code>scripts/build_site.py</code> 生成于 2026-11-09 00:00。历史回测含成本假设，不构成投资建议。</div></footer>
 </body>
 </html>

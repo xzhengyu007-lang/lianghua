@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>实时 · A 股量化研究</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b12; --surface:#0f1522; --surface2:#141c2b; --line:#1e293b;
+  --line2:#2a3a52; --text:#e8eef8; --dim:#8494ab; --dim2:#5c6b82;
+  --acc:#5b9dff; --acc2:#7c5cff; --pos:#22d39a; --neg:#ff5c7c; --warn:#f5b942;
+  --glow:0 0 0 1px rgba(91,157,255,.12), 0 8px 32px -12px rgba(0,0,0,.8);
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(91,157,255,.10), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(124,92,255,.08), transparent 55%),
+    var(--bg);
+  color:var(--text); min-height:100vh;
+  font:14px/1.65 ui-sans-serif,-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;
+  background:rgba(91,157,255,.10);color:#a8c7ff;padding:1px 6px;border-radius:5px}
+
+.wrap{max-width:1220px;margin:0 auto;padding:0 28px}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:rgba(8,11,18,.78);border-bottom:1px solid var(--line)}
+.hd{display:flex;align-items:center;gap:20px;height:62px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:650;font-size:15.5px;letter-spacing:.2px}
+.logo{width:26px;height:26px;border-radius:7px;flex:none;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  box-shadow:0 0 18px -4px rgba(91,157,255,.7);position:relative}
+.logo::after{content:"";position:absolute;inset:6px;border-radius:3px;
+  border:1.5px solid rgba(255,255,255,.85);border-bottom-color:transparent;border-right-color:transparent}
+nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav a{color:var(--dim);text-decoration:none;font-size:13.5px;padding:7px 14px;border-radius:8px;
+  transition:.16s;white-space:nowrap}
+nav a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav a.on{color:#fff;background:linear-gradient(135deg,rgba(91,157,255,.22),rgba(124,92,255,.18));
+  box-shadow:inset 0 0 0 1px rgba(91,157,255,.35)}
+
+/* ---------- hero ---------- */
+.hero{padding:44px 0 26px}
+.eyebrow{color:var(--acc);font-size:12px;letter-spacing:1.6px;text-transform:uppercase;
+  font-weight:600;margin-bottom:12px}
+h1{font-size:34px;line-height:1.2;font-weight:680;letter-spacing:-.6px;margin-bottom:14px}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--dim);font-size:15px;max-width:720px}
+.lede b{color:var(--text);font-weight:600}
+
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:26px 0}
+.card{background:linear-gradient(180deg,var(--surface),rgba(15,21,34,.6));
+  border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--glow)}
+.card .k{color:var(--dim2);font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;
+  font-weight:600;margin-bottom:7px}
+.card .v{font-size:26px;font-weight:660;letter-spacing:-.5px;line-height:1.15}
+.card .h{color:var(--dim2);font-size:11.5px;margin-top:5px}
+.card.hl{border-color:rgba(91,157,255,.32);
+  background:linear-gradient(180deg,rgba(91,157,255,.10),rgba(15,21,34,.7))}
+
+/* ---------- panels ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:20px 22px;margin-bottom:16px;box-shadow:var(--glow)}
+.panel h2{font-size:15.5px;font-weight:640;letter-spacing:.1px;margin-bottom:4px;
+  display:flex;align-items:center;gap:9px}
+.panel h2::before{content:"";width:3px;height:15px;border-radius:2px;flex:none;
+  background:linear-gradient(180deg,var(--acc),var(--acc2))}
+.panel .sub{color:var(--dim2);font-size:12.5px;margin-bottom:14px}
+.panel.alert{border-color:rgba(245,185,66,.28);
+  background:linear-gradient(180deg,rgba(245,185,66,.07),var(--surface))}
+
+h3{font-size:14px;font-weight:640;margin:20px 0 8px;color:var(--text)}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:140px}
+thead th{color:var(--dim2);font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;
+  font-weight:650;background:var(--surface2);position:sticky;top:0}
+tbody tr{transition:.12s}
+tbody tr:hover{background:rgba(91,157,255,.06)}
+tbody tr:last-child td{border-bottom:0}
+.pos{color:var(--pos);font-weight:560}
+.neg{color:var(--neg);font-weight:560}
+.dim{color:var(--dim2)}
+
+/* ---------- charts ---------- */
+.chart{width:100%;height:auto;display:block;border-radius:10px;background:rgba(0,0,0,.22)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--dim)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+
+/* ---------- live ---------- */
+.live-top{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--dim);
+  margin-bottom:14px;flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim2);flex:none}
+.dot.on{background:var(--pos);box-shadow:0 0 0 3px rgba(34,211,154,.16);animation:pulse 2.4s infinite}
+.dot.err{background:var(--neg);box-shadow:0 0 0 3px rgba(255,92,124,.16)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:11px}
+.q{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;
+  transition:.16s}
+.q:hover{border-color:var(--line2);transform:translateY(-1px)}
+.q .sym{font-size:12px;color:var(--dim);letter-spacing:.5px}
+.q .px{font-size:19px;font-weight:640;letter-spacing:-.3px;margin:3px 0}
+.q .chg{font-size:12px;font-weight:600}
+.q.up{border-color:rgba(34,211,154,.3)}
+.q.down{border-color:rgba(255,92,124,.28)}
+
+/* ---------- misc ---------- */
+.note{color:var(--dim2);font-size:12.5px;line-height:1.7}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13px}
+.kv dt{color:var(--dim2)}
+.kv dd{color:var(--text)}
+ul.tight{margin:8px 0 0 18px;color:var(--dim);font-size:13px}
+ul.tight li{margin:5px 0}
+ul.tight b{color:var(--text)}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;color:var(--dim2);font-size:12px}
+@media(max-width:720px){
+  h1{font-size:26px} .wrap{padding:0 16px} .hd{height:auto;padding:10px 0;flex-wrap:wrap}
+  nav{margin-left:0;width:100%;overflow-x:auto}
+}
+</style>
+</head>
+<body>
+<header><div class="wrap hd"><div class="brand"><span class="logo"></span>A 股量化研究</div><nav><a href="index.html">总览</a><a href="live.html" class="on">实时</a><a href="findings.html">结论台账</a><a href="log.html">研究日志</a><a href="reports.html">报告索引</a></nav></div></header>
+<div class="wrap"><div class="hero"><div class="eyebrow">Live</div><h1>实时行情与<em>持仓对照</em></h1><p class="lede">行情由浏览器直接向公开接口请求（腾讯财经，CORS 开放）。页面本身是静态的，<b>取不到数据时会明确报错</b>，不会把旧数字当成实时。</p></div><div class="panel"><h2>实时报价</h2><div class="live-top"><span class="dot" id="dot"></span><span id="status">正在连接…</span><span class="dim">·</span><span id="stamp" class="num dim"></span></div><div class="qgrid" id="quotes"></div><div class="note" id="err" style="display:none;color:#ff5c7c"></div></div><div class="panel"><h2>当前目标持仓</h2><div class="sub">来自 <code>reports/signal_today/orders.csv</code>：次日开盘的目标权重，不是当前市值权重</div><div class="scroll"><table><thead><tr><th>标的</th><th>行业</th><th>目标权重</th><th>最新价</th><th>今日涨跌</th></tr></thead><tbody id="holdings"></tbody></table></div><div class="note" id="hnote">价格列会在行情到达后填充。</div></div><div class="panel"><h2>怎么读这一页</h2><ul class="tight"><li><b>实时价只用于对照，不参与任何信号计算。</b>信号用的是前一交易日收盘数据，这是避免前视偏差的硬约束。</li><li><b>涨跌与目标权重无关。</b>权重是次日开盘的目标，今天的涨跌不改变它。</li><li><b>报价来自第三方公开接口</b>，延迟与准确性不受本仓控制；盘中停牌、涨跌停时接口可能返回陈旧价。</li></ul></div><script>
+const HOLDINGS = [{"symbol": "sh600036", "sector": "金融", "weight": "0.11875"}, {"symbol": "sh600900", "sector": "能源", "weight": "0.11875"}, {"symbol": "sh600941", "sector": "科技", "weight": "0.11875"}, {"symbol": "sh601186", "sector": "工业", "weight": "0.11875"}, {"symbol": "sh601985", "sector": "能源", "weight": "0.11875"}, {"symbol": "sz000001", "sector": "金融", "weight": "0.11875"}, {"symbol": "sz000538", "sector": "医药", "weight": "0.11875"}, {"symbol": "sz000651", "sector": "消费", "weight": "0.11875"}];
+const SYMS = HOLDINGS.map(h => h.symbol);
+const dot = document.getElementById('dot');
+const status = document.getElementById('status');
+const stamp = document.getElementById('stamp');
+const errBox = document.getElementById('err');
+function fail(msg){
+  dot.className='dot err'; status.textContent='取不到实时数据';
+  errBox.style.display='block'; errBox.textContent=msg;
+}
+function parse(text){
+  const out={};
+  text.split(';').forEach(chunk=>{
+    const m=chunk.match(/v_(\w+)="([^"]*)"/); if(!m) return;
+    const f=m[2].split('~'); if(f.length<33) return;
+    out[m[1]]={name:f[1],price:parseFloat(f[3]),prev:parseFloat(f[4]),
+               chg:parseFloat(f[32]),time:f[30]};
+  });
+  return out;
+}
+async function refresh(){
+  if(!SYMS.length){ fail('没有可查询的持仓标的。'); return; }
+  try{
+    const url='https://qt.gtimg.cn/q='+SYMS.join(',');
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const buf=await res.arrayBuffer();
+    const text=new TextDecoder('gbk').decode(buf);
+    const q=parse(text);
+    if(!Object.keys(q).length) throw new Error('返回内容为空');
+    dot.className='dot on'; status.textContent='已连接';
+    errBox.style.display='none';
+    const box=document.getElementById('quotes'); box.innerHTML='';
+    let newest='';
+    SYMS.forEach(sym=>{
+      const d=q[sym]; const el=document.createElement('div');
+      if(!d){ el.className='q'; el.innerHTML='<div class="sym">'+sym+'</div><div class="px dim">无报价</div>'; box.appendChild(el); return; }
+      const up=d.chg>=0; el.className='q '+(up?'up':'down');
+      el.innerHTML='<div class="sym">'+sym+'</div><div class="px num">'+d.price.toFixed(2)+'</div><div class="chg num '+(up?'pos':'neg')+'">'+(up?'+':'')+d.chg.toFixed(2)+'%</div>';
+      box.appendChild(el);
+      if(d.time>newest) newest=d.time;
+    });
+    if(newest){ stamp.textContent=newest.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/,'$1-$2-$3 $4:$5:$6'); }
+    const tb=document.getElementById('holdings'); tb.innerHTML='';
+    HOLDINGS.forEach(h=>{
+      const d=q[h.symbol]; const price=d?d.price.toFixed(2):'—';
+      const chg=d?('<span class="num '+(d.chg>=0?'pos':'neg')+'">'+(d.chg>=0?'+':'')+d.chg.toFixed(2)+'%</span>'):'—';
+      tb.innerHTML+='<tr><td>'+h.symbol+'</td><td class="dim">'+h.sector+'</td><td class="num">'+h.weight+'</td><td class="num">'+price+'</td><td>'+chg+'</td></tr>';
+    });
+    document.getElementById('hnote').textContent='最后更新 '+ (newest?newest:'未知') +'（交易所时间）。';
+  }catch(e){ fail('请求失败：'+e.message+'。可能是网络限制或接口变更。'); }
+}
+refresh(); setInterval(refresh, 15000);
+</script>
+</div>
+<footer><div class="wrap">由 <code>scripts/build_site.py</code> 生成于 2026-11-09 00:00。历史回测含成本假设，不构成投资建议。</div></footer>
+</body>
+</html>

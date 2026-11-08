@@ -2,56 +2,138 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>总览 · A 股量化研究</title>
 <style>
-:root{--bg:#0b0f18;--panel:#131a27;--panel2:#0f1622;--border:#1f2a3d;--text:#dbe4f0;
---muted:#7f8da3;--accent:#4ea1ff;--pos:#2fd18b;--neg:#ff5f7a;--warn:#f2b544}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,"Segoe UI",
-"Microsoft YaHei",system-ui,sans-serif}
-.num,code{font-family:ui-monospace,Consolas,"Cascadia Mono",monospace;font-variant-numeric:tabular-nums}
-header{padding:18px 24px 0;border-bottom:1px solid var(--border);
-background:linear-gradient(180deg,#111a28,#0b0f18)}
-h1{margin:0 0 4px;font-size:19px;font-weight:650}
-.sub{color:var(--muted);font-size:12px;margin-bottom:14px}
-nav{display:flex;gap:4px;flex-wrap:wrap}
-nav a{color:var(--muted);text-decoration:none;font-size:13.5px;padding:9px 16px;
-border-radius:8px 8px 0 0;border-bottom:2px solid transparent}
-nav a:hover{color:var(--text);background:#16203130}
-nav a.on{color:var(--accent);border-bottom-color:var(--accent);background:#162031}
-main{padding:20px 24px 64px;max-width:1500px;margin:0 auto}
-h2{font-size:16px;margin:28px 0 10px;font-weight:640}
-h2:first-child{margin-top:4px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.card .k{color:var(--muted);font-size:12px}
-.card .v{font-size:22px;font-weight:600;margin-top:4px}
-.card .h{color:var(--muted);font-size:11.5px;margin-top:2px}
-table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden;
-margin-bottom:8px}
-th,td{padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);
-white-space:nowrap;font-size:13px}
-th:first-child,td:first-child{text-align:left;white-space:normal}
-thead th{color:var(--muted);font-size:12px;background:var(--panel2);position:sticky;top:0}
-tbody tr:hover{background:#162031}
-.pos{color:var(--pos)}.neg{color:var(--neg)}
-.note{color:var(--muted);font-size:12.5px;margin:8px 0 0}
-.box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 18px;
-margin-bottom:14px}
-.box.warn{border-color:#5a4620;background:#1d1a12}
-.box b{color:var(--text)}
-section.sec{background:var(--panel);border:1px solid var(--border);border-radius:10px;
-padding:14px 18px;margin-bottom:12px}
-section.sec h3{margin:0 0 6px;font-size:14px;font-weight:640}
-details summary{cursor:pointer;color:var(--muted);font-size:12.5px}
-a{color:var(--accent)}
-footer{color:var(--muted);font-size:12px;padding:0 24px 40px;max-width:1500px;margin:0 auto}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b12; --surface:#0f1522; --surface2:#141c2b; --line:#1e293b;
+  --line2:#2a3a52; --text:#e8eef8; --dim:#8494ab; --dim2:#5c6b82;
+  --acc:#5b9dff; --acc2:#7c5cff; --pos:#22d39a; --neg:#ff5c7c; --warn:#f5b942;
+  --glow:0 0 0 1px rgba(91,157,255,.12), 0 8px 32px -12px rgba(0,0,0,.8);
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(91,157,255,.10), transparent 60%),
+    radial-gradient(900px 500px at 90% 0%, rgba(124,92,255,.08), transparent 55%),
+    var(--bg);
+  color:var(--text); min-height:100vh;
+  font:14px/1.65 ui-sans-serif,-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-variant-numeric:tabular-nums}
+code{font-family:ui-monospace,Consolas,monospace;font-size:.92em;
+  background:rgba(91,157,255,.10);color:#a8c7ff;padding:1px 6px;border-radius:5px}
+
+.wrap{max-width:1220px;margin:0 auto;padding:0 28px}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:rgba(8,11,18,.78);border-bottom:1px solid var(--line)}
+.hd{display:flex;align-items:center;gap:20px;height:62px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:650;font-size:15.5px;letter-spacing:.2px}
+.logo{width:26px;height:26px;border-radius:7px;flex:none;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));
+  box-shadow:0 0 18px -4px rgba(91,157,255,.7);position:relative}
+.logo::after{content:"";position:absolute;inset:6px;border-radius:3px;
+  border:1.5px solid rgba(255,255,255,.85);border-bottom-color:transparent;border-right-color:transparent}
+nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+nav a{color:var(--dim);text-decoration:none;font-size:13.5px;padding:7px 14px;border-radius:8px;
+  transition:.16s;white-space:nowrap}
+nav a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+nav a.on{color:#fff;background:linear-gradient(135deg,rgba(91,157,255,.22),rgba(124,92,255,.18));
+  box-shadow:inset 0 0 0 1px rgba(91,157,255,.35)}
+
+/* ---------- hero ---------- */
+.hero{padding:44px 0 26px}
+.eyebrow{color:var(--acc);font-size:12px;letter-spacing:1.6px;text-transform:uppercase;
+  font-weight:600;margin-bottom:12px}
+h1{font-size:34px;line-height:1.2;font-weight:680;letter-spacing:-.6px;margin-bottom:14px}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--acc),var(--acc2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{color:var(--dim);font-size:15px;max-width:720px}
+.lede b{color:var(--text);font-weight:600}
+
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:26px 0}
+.card{background:linear-gradient(180deg,var(--surface),rgba(15,21,34,.6));
+  border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--glow)}
+.card .k{color:var(--dim2);font-size:11.5px;letter-spacing:.9px;text-transform:uppercase;
+  font-weight:600;margin-bottom:7px}
+.card .v{font-size:26px;font-weight:660;letter-spacing:-.5px;line-height:1.15}
+.card .h{color:var(--dim2);font-size:11.5px;margin-top:5px}
+.card.hl{border-color:rgba(91,157,255,.32);
+  background:linear-gradient(180deg,rgba(91,157,255,.10),rgba(15,21,34,.7))}
+
+/* ---------- panels ---------- */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:20px 22px;margin-bottom:16px;box-shadow:var(--glow)}
+.panel h2{font-size:15.5px;font-weight:640;letter-spacing:.1px;margin-bottom:4px;
+  display:flex;align-items:center;gap:9px}
+.panel h2::before{content:"";width:3px;height:15px;border-radius:2px;flex:none;
+  background:linear-gradient(180deg,var(--acc),var(--acc2))}
+.panel .sub{color:var(--dim2);font-size:12.5px;margin-bottom:14px}
+.panel.alert{border-color:rgba(245,185,66,.28);
+  background:linear-gradient(180deg,rgba(245,185,66,.07),var(--surface))}
+
+h3{font-size:14px;font-weight:640;margin:20px 0 8px;color:var(--text)}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:140px}
+thead th{color:var(--dim2);font-size:11.5px;letter-spacing:.7px;text-transform:uppercase;
+  font-weight:650;background:var(--surface2);position:sticky;top:0}
+tbody tr{transition:.12s}
+tbody tr:hover{background:rgba(91,157,255,.06)}
+tbody tr:last-child td{border-bottom:0}
+.pos{color:var(--pos);font-weight:560}
+.neg{color:var(--neg);font-weight:560}
+.dim{color:var(--dim2)}
+
+/* ---------- charts ---------- */
+.chart{width:100%;height:auto;display:block;border-radius:10px;background:rgba(0,0,0,.22)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--dim)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+
+/* ---------- live ---------- */
+.live-top{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--dim);
+  margin-bottom:14px;flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim2);flex:none}
+.dot.on{background:var(--pos);box-shadow:0 0 0 3px rgba(34,211,154,.16);animation:pulse 2.4s infinite}
+.dot.err{background:var(--neg);box-shadow:0 0 0 3px rgba(255,92,124,.16)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:11px}
+.q{background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:12px 14px;
+  transition:.16s}
+.q:hover{border-color:var(--line2);transform:translateY(-1px)}
+.q .sym{font-size:12px;color:var(--dim);letter-spacing:.5px}
+.q .px{font-size:19px;font-weight:640;letter-spacing:-.3px;margin:3px 0}
+.q .chg{font-size:12px;font-weight:600}
+.q.up{border-color:rgba(34,211,154,.3)}
+.q.down{border-color:rgba(255,92,124,.28)}
+
+/* ---------- misc ---------- */
+.note{color:var(--dim2);font-size:12.5px;line-height:1.7}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13px}
+.kv dt{color:var(--dim2)}
+.kv dd{color:var(--text)}
+ul.tight{margin:8px 0 0 18px;color:var(--dim);font-size:13px}
+ul.tight li{margin:5px 0}
+ul.tight b{color:var(--text)}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;color:var(--dim2);font-size:12px}
+@media(max-width:720px){
+  h1{font-size:26px} .wrap{padding:0 16px} .hd{height:auto;padding:10px 0;flex-wrap:wrap}
+  nav{margin-left:0;width:100%;overflow-x:auto}
+}
 </style>
 </head>
 <body>
-<header><h1>A 股量化研究</h1><div class="sub">研究结论、证据强度与部署建议 · 静态页面，无需后端</div><nav><a href="index.html" class="on">总览</a><a href="findings.html">结论台账</a><a href="log.html">研究日志</a><a href="reports.html">报告索引</a></nav></header>
-<main><div class="cards"><div class="card"><div class="k">结论条数</div><div class="v">97</div><div class="h">其中高置信度 66 条</div></div><div class="card"><div class="k">研究日志</div><div class="v">192 节</div><div class="h">每节可追溯到脚本与报告</div></div><div class="card"><div class="k">报告目录</div><div class="v">106</div><div class="h">含净值、指标与结论</div></div><div class="card"><div class="k">测试函数</div><div class="v">451 个</div><div class="h">pytest 全部通过（生成时点）</div></div></div><div class="box warn"><b>先读这一条</b>：7.14 年的记录对真 Sharpe 0.90 只有 <b>56% 检出力</b>。「有效」不等于「已被证明」。任何收益数字都必须同时给出相位中位（0.668）而不是点估计（0.902）。</div><h2>决策备忘</h2><div class="box"><h1>决策备忘</h1>
+<header><div class="wrap hd"><div class="brand"><span class="logo"></span>A 股量化研究</div><nav><a href="index.html" class="on">总览</a><a href="live.html">实时</a><a href="findings.html">结论台账</a><a href="log.html">研究日志</a><a href="reports.html">报告索引</a></nav></div></header>
+<div class="wrap"><div class="hero"><div class="eyebrow">Quantitative Research</div><h1>A 股低波策略的<em>完整证据链</em></h1><p class="lede">从数据管线到决策页，每条结论都带可追溯的脚本、报告与置信度。<b>先说结论</b>：策略有效，但 7.14 年的记录对真 Sharpe 0.90 只有 <b>56% 检出力</b>——「有效」不等于「已被证明」。</p></div><div class="grid"><div class="card hl"><div class="k">部署口径累计收益</div><div class="v"><span class="pos">+32.74%</span></div><div class="h">混合 20 相位 + 12% 目标波动</div></div><div class="card hl"><div class="k">Sharpe</div><div class="v">0.925</div><div class="h">相位中位仅 0.668</div></div><div class="card"><div class="k">结论台账</div><div class="v">98 条</div><div class="h">高置信度 67 条</div></div><div class="card"><div class="k">研究日志</div><div class="v">193 节</div><div class="h">每节可追溯到脚本</div></div><div class="card"><div class="k">报告目录</div><div class="v">106 个</div><div class="h">含净值与指标</div></div><div class="card"><div class="k">测试函数</div><div class="v">453 个</div><div class="h">全部通过</div></div></div><div class="panel"><h2>部署口径净值曲线</h2><div class="sub">wf_phase_blend · 累计收益以百分比计，虚线为零轴</div><svg class="chart" viewBox="0 0 980 190" preserveAspectRatio="none" role="img" aria-label="净值曲线"><defs><linearGradient id="g8379695755148647986" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5b9dff" stop-opacity=".28"/><stop offset="100%" stop-color="#5b9dff" stop-opacity="0"/></linearGradient></defs><line x1="46" y1="168.0" x2="966" y2="168.0" stroke="#1b2434" stroke-width="1"/><text x="39" y="171.0" fill="#5c6b82" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">-1%</text><line x1="46" y1="129.0" x2="966" y2="129.0" stroke="#1b2434" stroke-width="1"/><text x="39" y="132.0" fill="#5c6b82" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">+8%</text><line x1="46" y1="90.0" x2="966" y2="90.0" stroke="#1b2434" stroke-width="1"/><text x="39" y="93.0" fill="#5c6b82" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">+17%</text><line x1="46" y1="51.0" x2="966" y2="51.0" stroke="#1b2434" stroke-width="1"/><text x="39" y="54.0" fill="#5c6b82" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">+26%</text><line x1="46" y1="12.0" x2="966" y2="12.0" stroke="#1b2434" stroke-width="1"/><text x="39" y="15.0" fill="#5c6b82" font-size="10" text-anchor="end" font-family="ui-monospace,monospace">+35%</text><line x1="46" y1="162.6" x2="966" y2="162.6" stroke="#2a3a52" stroke-width="1" stroke-dasharray="3 3"/><polygon points="46.0,162.6 46.0,162.6 48.7,161.6 53.1,165.8 57.5,162.0 59.3,163.1 63.7,168.0 66.4,152.9 70.8,147.6 73.4,146.0 77.9,135.7 89.4,120.9 92.0,117.7 95.6,124.7 98.2,123.9 102.7,115.9 107.1,118.9 109.8,131.1 114.2,132.6 116.8,131.7 121.3,134.3 123.0,132.5 127.5,128.6 133.7,127.8 138.1,120.7 140.7,107.3 145.2,111.2 147.8,111.5 156.7,104.3 158.5,106.4 162.9,93.6 165.5,97.7 170.0,92.9 172.6,97.1 177.0,91.8 181.5,91.7 184.1,88.1 188.6,92.3 191.2,93.0 195.6,94.7 200.1,95.2 202.7,92.0 207.2,78.2 209.8,82.8 214.2,80.9 216.0,75.9 220.4,70.0 224.9,67.4 227.5,63.9 231.9,70.8 234.6,73.3 239.0,82.3 243.5,82.8 245.2,80.2 249.7,67.6 252.3,67.1 256.7,64.4 259.4,85.5 263.8,99.8 268.3,106.1 270.9,114.8 276.2,110.9 280.6,107.9 283.3,76.6 293.9,12.0 296.6,39.3 301.0,47.1 305.4,45.1 308.1,45.8 311.6,44.1 314.3,50.0 318.7,42.4 321.4,42.1 325.8,44.9 330.2,47.7 332.9,46.3 337.3,56.4 339.1,54.6 343.5,47.9 346.2,47.7 350.6,42.7 355.0,40.8 357.7,40.6 362.1,34.2 364.8,29.3 368.3,28.7 373.6,44.4 376.3,46.3 380.7,52.8 383.4,49.8 387.8,59.8 392.2,44.3 402.0,54.3 405.5,51.6 408.2,44.6 412.6,43.2 417.0,47.9 419.7,47.8 424.1,49.0 426.8,47.1 431.2,50.8 432.9,44.1 437.4,45.5 441.8,51.6 444.5,48.0 448.9,47.9 454.2,66.6 456.9,50.8 461.3,47.8 463.1,45.4 467.5,45.7 470.1,47.7 474.6,55.4 481.6,50.3 486.1,45.3 488.7,46.3 493.2,42.3 494.9,47.1 499.4,49.9 504.7,48.6 507.3,49.7 511.8,50.4 516.2,51.4 518.8,49.0 523.3,43.8 525.0,38.2 529.5,45.1 532.1,41.8 536.5,39.0 541.0,35.0 543.6,40.4 548.1,34.2 550.7,42.8 554.3,46.6 556.9,51.8 561.3,48.8 565.8,46.4 568.4,48.4 572.9,46.3 575.5,34.8 579.9,39.7 581.7,38.2 586.1,39.5 590.6,33.2 593.2,31.7 597.6,38.4 600.3,47.2 604.7,47.1 609.2,52.0 618.0,45.4 622.4,46.0 625.1,46.0 629.5,43.8 633.9,36.8 636.6,36.0 641.0,36.9 643.7,35.7 647.2,30.3 649.9,30.2 654.3,29.2 658.7,34.7 661.4,34.1 665.8,30.7 668.5,35.6 672.9,43.1 674.7,45.4 679.1,42.0 683.5,41.3 686.2,43.7 690.6,39.3 696.8,38.1 699.5,40.5 703.9,48.4 705.7,54.5 710.1,54.3 714.5,49.7 717.2,47.2 721.6,55.6 724.3,44.9 728.7,40.2 740.2,41.0 742.0,42.5 746.4,27.5 749.1,27.9 753.5,24.2 757.9,30.5 760.6,37.6 765.0,48.8 767.7,47.7 771.2,46.8 773.9,50.0 779.2,53.8 783.6,47.6 786.3,49.7 790.7,45.8 795.1,48.2 797.8,45.7 804.0,49.6 808.4,54.8 811.0,59.2 815.5,62.6 819.9,64.2 822.6,68.8 827.0,56.9 829.6,60.6 833.2,61.5 835.8,59.6 840.3,69.0 845.6,73.2 848.2,78.2 852.7,72.4 857.1,72.6 859.7,68.9 863.3,71.7 865.9,68.5 870.4,57.2 873.0,56.7 877.5,48.5 881.9,45.9 884.5,56.5 889.0,53.4 890.7,56.8 895.2,58.1 897.8,51.7 902.2,42.8 906.7,42.5 909.3,38.8 913.8,48.3 916.4,43.7 920.0,44.5 922.6,49.1 927.0,52.0 932.4,49.9 941.2,39.5 945.6,29.5 950.1,24.5 952.7,38.9 956.3,33.6 958.9,27.6 963.3,18.5 966.0,20.4 966.0,162.6" fill="url(#g8379695755148647986)"/><polyline points="46.0,162.6 48.7,161.6 53.1,165.8 57.5,162.0 59.3,163.1 63.7,168.0 66.4,152.9 70.8,147.6 73.4,146.0 77.9,135.7 89.4,120.9 92.0,117.7 95.6,124.7 98.2,123.9 102.7,115.9 107.1,118.9 109.8,131.1 114.2,132.6 116.8,131.7 121.3,134.3 123.0,132.5 127.5,128.6 133.7,127.8 138.1,120.7 140.7,107.3 145.2,111.2 147.8,111.5 156.7,104.3 158.5,106.4 162.9,93.6 165.5,97.7 170.0,92.9 172.6,97.1 177.0,91.8 181.5,91.7 184.1,88.1 188.6,92.3 191.2,93.0 195.6,94.7 200.1,95.2 202.7,92.0 207.2,78.2 209.8,82.8 214.2,80.9 216.0,75.9 220.4,70.0 224.9,67.4 227.5,63.9 231.9,70.8 234.6,73.3 239.0,82.3 243.5,82.8 245.2,80.2 249.7,67.6 252.3,67.1 256.7,64.4 259.4,85.5 263.8,99.8 268.3,106.1 270.9,114.8 276.2,110.9 280.6,107.9 283.3,76.6 293.9,12.0 296.6,39.3 301.0,47.1 305.4,45.1 308.1,45.8 311.6,44.1 314.3,50.0 318.7,42.4 321.4,42.1 325.8,44.9 330.2,47.7 332.9,46.3 337.3,56.4 339.1,54.6 343.5,47.9 346.2,47.7 350.6,42.7 355.0,40.8 357.7,40.6 362.1,34.2 364.8,29.3 368.3,28.7 373.6,44.4 376.3,46.3 380.7,52.8 383.4,49.8 387.8,59.8 392.2,44.3 402.0,54.3 405.5,51.6 408.2,44.6 412.6,43.2 417.0,47.9 419.7,47.8 424.1,49.0 426.8,47.1 431.2,50.8 432.9,44.1 437.4,45.5 441.8,51.6 444.5,48.0 448.9,47.9 454.2,66.6 456.9,50.8 461.3,47.8 463.1,45.4 467.5,45.7 470.1,47.7 474.6,55.4 481.6,50.3 486.1,45.3 488.7,46.3 493.2,42.3 494.9,47.1 499.4,49.9 504.7,48.6 507.3,49.7 511.8,50.4 516.2,51.4 518.8,49.0 523.3,43.8 525.0,38.2 529.5,45.1 532.1,41.8 536.5,39.0 541.0,35.0 543.6,40.4 548.1,34.2 550.7,42.8 554.3,46.6 556.9,51.8 561.3,48.8 565.8,46.4 568.4,48.4 572.9,46.3 575.5,34.8 579.9,39.7 581.7,38.2 586.1,39.5 590.6,33.2 593.2,31.7 597.6,38.4 600.3,47.2 604.7,47.1 609.2,52.0 618.0,45.4 622.4,46.0 625.1,46.0 629.5,43.8 633.9,36.8 636.6,36.0 641.0,36.9 643.7,35.7 647.2,30.3 649.9,30.2 654.3,29.2 658.7,34.7 661.4,34.1 665.8,30.7 668.5,35.6 672.9,43.1 674.7,45.4 679.1,42.0 683.5,41.3 686.2,43.7 690.6,39.3 696.8,38.1 699.5,40.5 703.9,48.4 705.7,54.5 710.1,54.3 714.5,49.7 717.2,47.2 721.6,55.6 724.3,44.9 728.7,40.2 740.2,41.0 742.0,42.5 746.4,27.5 749.1,27.9 753.5,24.2 757.9,30.5 760.6,37.6 765.0,48.8 767.7,47.7 771.2,46.8 773.9,50.0 779.2,53.8 783.6,47.6 786.3,49.7 790.7,45.8 795.1,48.2 797.8,45.7 804.0,49.6 808.4,54.8 811.0,59.2 815.5,62.6 819.9,64.2 822.6,68.8 827.0,56.9 829.6,60.6 833.2,61.5 835.8,59.6 840.3,69.0 845.6,73.2 848.2,78.2 852.7,72.4 857.1,72.6 859.7,68.9 863.3,71.7 865.9,68.5 870.4,57.2 873.0,56.7 877.5,48.5 881.9,45.9 884.5,56.5 889.0,53.4 890.7,56.8 895.2,58.1 897.8,51.7 902.2,42.8 906.7,42.5 909.3,38.8 913.8,48.3 916.4,43.7 920.0,44.5 922.6,49.1 927.0,52.0 932.4,49.9 941.2,39.5 945.6,29.5 950.1,24.5 952.7,38.9 956.3,33.6 958.9,27.6 963.3,18.5 966.0,20.4" fill="none" stroke="#5b9dff" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg></div><div class="panel alert"><h2>读这一页之前必须先知道的三件事</h2><ul class="tight"><li><b>它是「在最平静的 8 只里剔除跌破趋势的那些」，不是「低波打分 + 趋势确认」。</b>零件账显示趋势过滤承担全部贡献（+0.60/−0.09/+0.18），0.8/0.2 打分混合平均为零。</li><li><b>把 0.902 当期望值是错的。</b>同一窗口的相位中位 Sharpe 只有 0.668，相位跨度 0.681–1.327。</li><li><b>相对随机选股优势巨大（+1.03 Sharpe），但相对最自然的替代品六格全不显著。</b>「有效」不等于「比显而易见的做法更好」。</li></ul></div><div class="panel"><h2>机器解读</h2><div class="sub">以上每一句都由 reports/ 下的产物计算，没有引入新的模型或观点。结论的置信度以 FINDINGS.md 为准。</div><div style="padding:14px 0;border-bottom:1px solid var(--line)"><div style="font-size:12px;color:var(--acc);letter-spacing:.8px;text-transform:uppercase;font-weight:600;margin-bottom:6px">贡献从哪来</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">趋势过滤承担全部贡献，打分混合平均为零。</div><div class="note">加过滤的 Sharpe 增量在三段分别是 +0.60 / -0.09 / +0.18；加混合是 -0.00 / +0.11 / -0.18。混合确实会改变篮子（重合 6.91/8、71% 的调仓会换名），但换掉的那只不携带信息。</div></div><div style="padding:14px 0;border-bottom:1px solid var(--line)"><div style="font-size:12px;color:var(--acc);letter-spacing:.8px;text-transform:uppercase;font-weight:600;margin-bottom:6px">选择规则值多少</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">对随机选股优势巨大；对最自然的替代品则几乎不可分辨。</div><div class="note">把打分换成随机、其余不变，Sharpe 从 1.143 掉到中位 0.116（p95 0.459，发布策略在第 100 百分位）。但换成「在册 128 只里直接选最平静的 8 只」，配对 ΔSharpe 区间 见 §23.109。</div></div><div style="padding:14px 0;border-bottom:1px solid var(--line)"><div style="font-size:12px;color:var(--acc);letter-spacing:.8px;text-transform:uppercase;font-weight:600;margin-bottom:6px">这条记录有多可信</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">「有效」不等于「已被证明」。</div><div class="note">对真 Sharpe 0.90，7.14 年只有 0% 检出力，80% 需要 0.0 年；季度符号检验的检出力是 57%（对照 Sharpe 区间 56%），不是捷径。</div></div><div style="padding:14px 0;border-bottom:1px solid var(--line)"><div style="font-size:12px;color:var(--acc);letter-spacing:.8px;text-transform:uppercase;font-weight:600;margin-bottom:6px">测过但没采纳的改动</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">趋势窗口 250 在样本内更好，但不可分辨，因此不改。</div><div class="note">全期 Sharpe 1.012 → 1.330、回撤 -14.8% → -9.2%、换手 36.5 → 30.8；但推到 500 后曲线在 250 处见顶，且 250 与 300 的差小于单配置自身的相位跨度——这是内点峰，不是稳定优势。</div></div></div><div class="panel"><h2>决策备忘</h2><div class="sub">由 <code>DECISION.md</code> 生成，数值来自 reports/</div><h1>决策备忘</h1>
 <p>&gt; 由 <code>scripts/build_decision_memo.py</code> 从 <code>reports/</code> 生成，<strong>不要手改</strong>。 &gt; <code>tests/test_decision_memo.py</code> 会比对本文与重新生成的结果，改数字必须改报告。</p>
 <h2>如果你只记得三件事</h2>
 <ol><li><strong>它是什么</strong>：在最平静的 8 只里剔除跌破趋势的那些，月度轮动。中位持有一只股票 32 个交易日，不是「买入并持有低波龙头」（§23.74/§23.91）。<strong>名字里的「低波打分」几乎是装饰</strong>——真正干活的是趋势过滤（见下面零件账）。</li><li><strong>它值多少</strong>：全期 +95.87% / Sharpe 0.902（部署口径）。但同一窗口的相位中位 Sharpe 只有 <strong>0.668</strong>——把 0.902 当成期望值是错的（§23.82）。</li><li><strong>别把它当成已证明</strong>：7.14 年的记录对真 Sharpe 0.90 只有 <strong>56%</strong> 检出力；打分本身确实有效（随机选股中位只有 0.116），但「有效」不等于「已被证明」。</li></ol>
@@ -71,7 +153,7 @@ footer{color:var(--muted);font-size:12px;padding:0 24px 40px;max-width:1500px;ma
 <p>检出力只有 56%。想把「有效」从 suggestive 推到 established，只有下面五条路，而其中三条 已经被本仓实测证伪——所以这张表本身就是结论：</p>
 <table><thead><tr><th>路径</th><th>结论</th><th>依据</th></tr></thead><tbody><tr><td><strong>时间</strong></td><td>唯一确定有效，但慢：再跑 6.5 年</td><td>§23.89</td></tr><tr><td><strong>第二个 ≥120 只的市场</strong></td><td>有效，但需要外部数据：等效样本 1.54 倍，7.1 年变 10.9 年；60 只不够（随机子池中位 Sharpe 0.391、p10 0.059）</td><td>§23.93</td></tr><tr><td>更长的调仓周期</td><td><strong>不是杠杆</strong>：换手砍半但净 Sharpe 打平</td><td>§23.91</td></tr><tr><td>换执行时点</td><td><strong>不是杠杆</strong>：晚一天约 0.04 Sharpe，九格区间全含 0</td><td>§23.101</td></tr><tr><td>换检验统计量</td><td><strong>不是杠杆</strong>：符号检验 57% 检出力 vs Sharpe 区间 56%</td><td>§23.104</td></tr></tbody></table>
 <p><strong>明确写下什么会推翻上面的判断</strong>（这些是止损条件，不是预测）：</p>
-<ul><li>在册口径的低波 IC 跌破 0（当前 +0.031，§23.77）；</li><li>混合口径出现连续两个负自然年（历史上有 2022、2025 各一次，§23.86）；</li><li>实测成本超过 published 的两倍（§23.55 的 harsh 情景），且 60 日周期也救不回来；</li><li>可交易横截面继续收缩到 &lt;60 只，届时按 §23.93 的斜坡，期望 Sharpe 会掉到 0.4 一档。</li></ul></div></main>
-<footer>由 scripts/build_site.py 生成于 2026-11-08 23:14。数据为 2019-06 至 2026-11 的历史回测，不构成投资建议。</footer>
+<ul><li>在册口径的低波 IC 跌破 0（当前 +0.031，§23.77）；</li><li>混合口径出现连续两个负自然年（历史上有 2022、2025 各一次，§23.86）；</li><li>实测成本超过 published 的两倍（§23.55 的 harsh 情景），且 60 日周期也救不回来；</li><li>可交易横截面继续收缩到 &lt;60 只，届时按 §23.93 的斜坡，期望 Sharpe 会掉到 0.4 一档。</li></ul></div></div>
+<footer><div class="wrap">由 <code>scripts/build_site.py</code> 生成于 2026-11-09 00:00。历史回测含成本假设，不构成投资建议。</div></footer>
 </body>
 </html>
