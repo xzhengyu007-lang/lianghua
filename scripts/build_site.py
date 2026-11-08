@@ -127,11 +127,16 @@ def page_index(data: dict) -> str:
     findings = dashboard.parse_findings(ROOT / "FINDINGS.md")
     high = [row for row in findings if "高" in (row.get("confidence") or "")]
 
+    # Count the test functions rather than hardcoding a number that rots.
+    test_count = 0
+    for path in (ROOT / "tests").glob("test_*.py"):
+        test_count += path.read_text(encoding="utf-8").count(chr(10) + "def test_")
+
     cards = [
         ("结论条数", str(len(findings)), "其中高置信度 %d 条" % len(high)),
         ("研究日志", "%d 节" % len(dashboard.parse_log(ROOT / "RESEARCH_LOG.md")), "每节可追溯到脚本与报告"),
         ("报告目录", str(len(data.get("reports", []))), "含净值、指标与结论"),
-        ("测试", "450 项", "全部通过（生成时点）"),
+        ("测试函数", "%d 个" % test_count, "pytest 全部通过（生成时点）"),
     ]
     card_html = "".join(
         '<div class="card"><div class="k">%s</div><div class="v">%s</div><div class="h">%s</div></div>'
