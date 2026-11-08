@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 119 |
-| 在研究日志里出现过 | 77 |
-| 有对应测试 | 48 |
+| 脚本总数 | 120 |
+| 在研究日志里出现过 | 78 |
+| 有对应测试 | 49 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -72,6 +72,7 @@
 | `build_total_return_cache.py` | build | ✓ | — | Persist rebuilt total-return series next to the provider cache. |
 | `check_artifact_fingerprints.py` | check | ✓ | ✓ | Fingerprint the upstream research artifacts so a silent change cannot hide. |
 | `check_ledger_replay.py` | check | ✓ | — | Verify the paper ledger reconciles with the backtester. |
+| `download_extended.py` | download | ✓ | ✓ | Resume an interrupted long-history download instead of starting over. |
 | `download_pit_raw.py` | download | — | — | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_loop.py` | download | ✓ | — | Retry raw downloads for the PIT pool until every symbol has a cache. |
 | `download_pit_raw_rest.py` | download | — | — | Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19). |
