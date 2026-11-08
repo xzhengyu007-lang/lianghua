@@ -212,3 +212,92 @@ def test_the_server_binds_loopback_only() -> None:
     )
     assert 'default="127.0.0.1"' in source
     assert 'default="0.0.0.0"' not in source
+
+
+# --------------------------------------------------------------------------- #
+# the "生成计划" button, end to end
+# --------------------------------------------------------------------------- #
+def _seed_plan_fixture(state, tmp_path) -> None:
+    """A ledger, a gate at L2 and a non-blocked card: enough for /api/plan to trade."""
+    import pandas as pd
+
+    from quant_system.paper import Ledger
+    from quant_system.trading import TradingGate, TradingLevel
+
+    state.ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    Ledger(cash=200_000.0, positions={}, as_of="2026-11-06").save(state.ledger_path)
+    TradingGate(state.paths["gate"]).set_level(TradingLevel.L2_SEMI_AUTO)
+    card = {
+        "as_of": "2026-11-06",
+        "generated_at": "2026-11-09 15:30:00",
+        "strategy": "low_vol_core",
+        "equity": 200_000.0,
+        "blocked": False,
+        "block_reasons": [],
+        "items": [
+            {"symbol": "sh600036", "name": "招商银行", "weight": 0.2, "price": 42.0,
+             "limit_low": 41.79, "limit_high": 42.21, "shares": 900, "lot_size": 100},
+        ],
+        "uncertainty": {"complete": True},
+        "disclaimer": "历史回测结果，不构成投资建议。",
+    }
+    target = state.reports_dir / "advice_today"
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "card.json").write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
+
+
+def test_the_plan_button_plans_an_order_and_writes_the_broker_file(server, state, tmp_path) -> None:
+    _seed_plan_fixture(state, tmp_path)
+    status, payload = _post(server + "/api/plan", {})
+    assert status == 200, payload
+    plan = payload["plan"]
+    assert plan["halted"] is False
+    assert len(plan["orders"]) == 1
+    assert plan["orders"][0]["symbol"] == "sh600036"
+    assert plan["written"] is not None, "L2 must produce the broker file"
+    assert "招商银行" in (tmp_path / "trading" / "orders_today" / "orders.csv").read_text(encoding="utf-8-sig")
+
+
+def test_the_plan_button_is_idempotent(server, state, tmp_path) -> None:
+    """Clicking twice is the most likely operator error in the whole UI."""
+    _seed_plan_fixture(state, tmp_path)
+    _post(server + "/api/plan", {})
+    status, second = _post(server + "/api/plan", {})
+    assert status == 200
+    plan = second["plan"]
+    assert plan["orders"] == []
+    assert plan["rejected"] and "已有一张有效订单" in " ".join(plan["rejected"][0]["reasons"])
+
+
+def test_the_plan_button_refuses_while_the_gate_is_killed(server, state, tmp_path) -> None:
+    from quant_system.trading import TradingGate
+
+    _seed_plan_fixture(state, tmp_path)
+    TradingGate(state.paths["gate"]).kill("界面停机")
+    status, payload = _post(server + "/api/plan", {})
+    assert status == 200
+    assert payload["plan"]["halted"] is True
+    assert "kill switch" in payload["plan"]["halt_reason"]
+
+
+def test_the_plan_button_reports_a_blocked_card_instead_of_trading(server, state, tmp_path) -> None:
+    _seed_plan_fixture(state, tmp_path)
+    card_path = state.reports_dir / "advice_today" / "card.json"
+    card = json.loads(card_path.read_text(encoding="utf-8"))
+    card["blocked"] = True
+    card["block_reasons"] = ["缓存最新交易日 2026-11-05 ≠ 上一交易日 2026-11-06"]
+    card_path.write_text(json.dumps(card, ensure_ascii=False), encoding="utf-8")
+
+    status, payload = _post(server + "/api/plan", {})
+    assert status == 200
+    assert payload["blocked"] is True
+    assert payload["plan"] is None
+    assert "不排单" in payload["note"]
+
+
+def test_bars_limit_is_clamped(server) -> None:
+    """A browser asking for 10 million bars gets a bounded answer, not an OOM."""
+    status, body = _get(server + "/api/bars?symbol=sh600036&limit=10000000")
+    payload = json.loads(body)
+    assert status == 200
+    assert payload["count"] <= 20000
