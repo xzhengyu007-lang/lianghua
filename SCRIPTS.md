@@ -4,10 +4,10 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 129 |
+| 脚本总数 | 130 |
 | 在研究日志里出现过 | 84 |
 | 有对应测试 | 55 |
-| **两者都没有（孤儿）** | **42** |
+| **两者都没有（孤儿）** | **43** |
 
 ## 孤儿脚本（未记录、未测试）
 
@@ -17,6 +17,7 @@
 | `download_pit_raw.py` | download | 22 | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_rest.py` | download | 21 | Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19). |
 | `measure_realtime_sla.py` | other | 218 | Measure the realtime/advice SLAs the docs quote, so they cannot drift silently. |
+| `run_acceptance.py` | run | 218 | One command that answers "is this checkout still acceptable?". |
 | `run_adjustment_audit.py` | run | 71 | Compare qfq / raw / rebuilt series on one window: the additive-adjustment problem (23.19). |
 | `run_adv_lookahead.py` | run | 63 | Does the ADV participation cap read volume the order is about to consume? (23.17) |
 | `run_baseline.py` | run | 153 | Full-period baseline: report, dashboard, and factor diagnostics. |
@@ -88,6 +89,7 @@
 | `rebuild_from_hfq.py` | other | ✓ | — | Rebuild a symbol's qfq cache from hfq rescaled to the latest raw close. |
 | `refresh_critical.py` | other | ✓ | ✓ | Rebuild the reports the decision rests on, in one command. |
 | `run_52w_overlay.py` | run | ✓ | ✓ | Proximity to the 52-week high as a portfolio overlay (RESEARCH_LOG 23.77). |
+| `run_acceptance.py` | run | — | — | One command that answers "is this checkout still acceptable?". |
 | `run_adjustment_audit.py` | run | — | — | Compare qfq / raw / rebuilt series on one window: the additive-adjustment problem (23.19). |
 | `run_adjustment_rebuild.py` | run | ✓ | — | Rebuild multiplicative total-return series from raw + qfq, then re-run the baseline (23.19). |
 | `run_adv_lookahead.py` | run | — | — | Does the ADV participation cap read volume the order is about to consume? (23.17) |

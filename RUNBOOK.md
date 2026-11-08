@@ -21,8 +21,22 @@ python -m venv .venv
 | 3 | `python scripts\audit_staleness.py` | `citation_problems: 0`，关键集 12/12 新鲜 | 3 s |
 | 4 | `python -m quant_system --universe pit --adjustment rebuilt brief ...` | exit 0，生成 `brief.md/json/html` | 5 s |
 | 5 | `python -m quant_system --universe pit --adjustment rebuilt signal ...` | exit 0，8 只目标权重 | 5 s |
+| 6 | `python scripts\run_acceptance.py` | 五项全 ✅（含回测锚点与交易台冒烟） | ~4 min |
 
 第 4、5 步的完整参数见 `README.md` 的「快速开始」。
+
+## 1.4 交付前的验收（一条命令）
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_acceptance.py
+```
+
+五项：`pytest` 全绿、`run_publish_check` 三项 ok、上游产物指纹未漂、引用审计 0 问题、
+交易台 `/api/state` 是严格 JSON。**第六项是回测锚点**：与 `reports/acceptance/last.json`
+里上次通过的锚点逐位比对——首次运行只记录。失败的那次不会覆盖记录。
+
+锚点变了只有两种解释：要么你确实改了口径（那就同步改 `DECISION.md`/README 并说明），
+要么你无意中动了回测路径（那就回滚）。这个脚本不判断哪种，它只拒绝装作没发生。
 
 ## 1.5 每个交易日的两条命令（交易层）
 

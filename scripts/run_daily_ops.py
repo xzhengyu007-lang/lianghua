@@ -254,7 +254,7 @@ def run_daily_ops(
             strategy=strategy,
             signal_as_of=str(signal.as_of.date()),
             snapshot_time=(board.fetched_at.isoformat() if board is not None and board.fetched_at is not None else ""),
-            names={str(k): str(v) for k, v in pit_universe().items()} if universe == "pit" else {},
+            names=_symbol_names(),
             output_dir=paths["orders"],
         )
         expected, attention = split_rejections(outcome.rejected)
@@ -363,6 +363,19 @@ def split_rejections(rejected: list[dict]) -> tuple[list[dict], list[dict]]:
         text = " ".join(str(reason) for reason in (row.get("reasons") or []))
         (expected if any(token in text for token in EXPECTED_REJECTIONS) else attention).append(row)
     return expected, attention
+def _symbol_names() -> dict[str, str]:
+    """Readable names keyed by normalized symbol -- for any universe.
+
+    ``pit_universe()`` carries all 268 names (current + delisted), so it also covers
+    the broad/default pools.  Keying it by normalised symbol matters: the raw keys
+    are bare codes, and a "sh600519" lookup against them silently yields blanks.
+    """
+    try:
+        return {normalize_symbol(str(key)): str(value) for key, value in pit_universe().items()}
+    except Exception:  # pragma: no cover - a checkout without the manifest
+        return {}
+
+
 def _load_ledger(path: Path | None, init_cash: float | None) -> Ledger | None:
     if path is None:
         return None

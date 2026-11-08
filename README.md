@@ -156,6 +156,25 @@ python -m venv .venv
 
 全局参数：`--universe {default,broad,pit}`、`--symbols`、`--min-bars`、`--benchmark`。
 
+### 一条命令验收
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_acceptance.py          # 5 项，约 4 分钟
+.\.venv\Scripts\python.exe scripts\run_acceptance.py --with-sla  # 再加行情 SLA 实测
+```
+
+| 检查 | 判据 |
+|---|---|
+| `pytest` | 全绿 |
+| `publish_check` | 可复现 / 指纹 / 因果三项 ok |
+| `artifact_fingerprints` | 上游产物没有漂移 |
+| `staleness` | 引用审计 0 问题 |
+| `desk_smoke` | 交易台能起来，`/api/state` 是严格 JSON（无 NaN） |
+| `backtest_anchor` | 回测锚点与上次验收**逐位相同**（首次运行只记录） |
+
+退出码 `0` 全绿、`1` 有检查没过。通过的运行会把锚点写进 `reports/acceptance/last.json`，
+下一次自动比对——所以"回测数字一字未变"不再靠人记。
+
 ### 本地交易台（`scripts/desk_server.py`）
 
 一条命令起一个**本机**交易台：`python scripts/desk_server.py`（默认 `127.0.0.1:8770`，只监听回环）。

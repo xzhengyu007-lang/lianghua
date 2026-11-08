@@ -1059,6 +1059,7 @@ def cmd_trade(args: argparse.Namespace) -> int:
     from .trading import (
         AuditLog,
         IdempotencyBook,
+        OrderState,
         RiskLimits,
         TradingGate,
         TradingLevel,
@@ -1102,6 +1103,26 @@ def cmd_trade(args: argparse.Namespace) -> int:
     if action == "reset-kill":
         gate.reset_kill(reset_level=True)
         print(json.dumps(gate.describe(args.date), ensure_ascii=False, indent=2, default=str))
+        return 0
+
+    if action == "release":
+        # A human decided not to trade a ticket (or the broker refused it).  Without
+        # this, the key stays reserved all day and the plan can never be regenerated
+        # -- the safe default (refuse duplicates) needs an explicit way out.
+        if not (args.symbol and args.side and args.date):
+            raise ValueError("--action release 需要 --symbol、--side 与 --date")
+        book = IdempotencyBook(paths["idempotency"])
+        key = (str(args.date), str(args.symbol), str(args.side))
+        if not book.is_reserved(trade_date=key[0], symbol=key[1], side=key[2]):
+            raise ValueError("%s 没有有效订单可释放" % " ".join(key))
+        book.release(key, state=OrderState.CANCELLED)
+        AuditLog(paths["audit"]).record(
+            "order.released", trade_date=key[0], symbol=key[1], side=key[2],
+            source="operator", detail={"reason": args.reason or "人工释放"},
+        )
+        print(json.dumps(
+            {"released": " ".join(key), "active_orders": len(IdempotencyBook(paths["idempotency"]))},
+            ensure_ascii=False, indent=2))
         return 0
 
     ledger = Ledger.load(args.ledger) if args.ledger else None
@@ -1549,7 +1570,8 @@ def build_parser() -> argparse.ArgumentParser:
     trade.add_argument(
         "--action",
         required=True,
-        choices=["status", "level", "kill", "reset-kill", "plan", "fills", "reconcile", "statement"],
+        choices=["status", "level", "kill", "reset-kill", "release", "plan", "fills",
+                 "reconcile", "statement"],
     )
     trade.add_argument("--ledger", default=None, help="paper ledger JSON")
     trade.add_argument("--signal", default=None, help="signal.json to plan from (default reports/signal_today)")
@@ -1557,7 +1579,9 @@ def build_parser() -> argparse.ArgumentParser:
     trade.add_argument("--fills", default=None, help="CSV of executed fills")
     trade.add_argument("--date", default=None, help="trade date (YYYY-MM-DD)")
     trade.add_argument("--level", type=int, choices=[0, 1, 2, 3], default=None)
-    trade.add_argument("--reason", default=None, help="kill-switch reason")
+    trade.add_argument("--reason", default=None, help="kill-switch / release reason")
+    trade.add_argument("--symbol", default=None, help="--action release: symbol to release")
+    trade.add_argument("--side", default=None, choices=["buy", "sell"], help="--action release")
     trade.add_argument("--equity", type=float, default=None)
     trade.add_argument("--max-order-notional", type=float, default=200_000.0)
     trade.add_argument("--max-daily-new-exposure", type=float, default=None,
