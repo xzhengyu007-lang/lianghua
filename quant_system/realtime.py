@@ -1124,9 +1124,11 @@ class SnapshotStore:
     difference between degrading honestly and inventing a number.
     """
 
-    def __init__(self, path: str | Path = DEFAULT_STORE, *, keep_days: int = 60) -> None:
+    def __init__(self, path: str | Path = DEFAULT_STORE, *, keep_days: int = 60,
+                 thin_after_days: int = 5) -> None:
         self.path = Path(path)
         self.keep_days = int(keep_days)
+        self.thin_after_days = int(thin_after_days)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._session() as conn:
             conn.executescript(_SCHEMA)
@@ -1140,6 +1142,12 @@ class SnapshotStore:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
         conn.execute("PRAGMA busy_timeout=5000")
+        # The retention DELETE uses window functions over the whole table; SQLite then
+        # wants a temp file for the sort, and on a shell whose TEMP resolves nowhere it
+        # fails with "unable to open database file" (found by pruning a simulated day of
+        # 38k rows -- the small unit-test dataset never spilled).  The data is tiny, so
+        # keeping the temp store in memory removes the dependency entirely.
+        conn.execute("PRAGMA temp_store=MEMORY")
         return conn
 
     @contextmanager
@@ -1162,25 +1170,36 @@ class SnapshotStore:
         conn.execute("INSERT OR REPLACE INTO meta VALUES (?,?)", (key, value))
 
     def prune(self, *, now: pd.Timestamp | datetime | str | None = None,
-              keep_days: int | None = None) -> dict:
+              keep_days: int | None = None, thin_after_days: int | None = None) -> dict:
         """Bound the table that a 3 s poll loop would otherwise grow forever.
 
-        Inside the retention window every row is kept (the intraday path is the
-        interesting part for "what did the desk see at 10:31?").  Older days keep
-        only their first and last row, so the daily open and close survive for
-        accounting while the middle of those days is dropped.
+        Three tiers, because one tier is the wrong shape.  Measured on this machine
+        a running desk writes ~3.9 kB per round (8 names) -- about 10 MB per trading
+        day -- so "keep everything for 60 days" would be ~600 MB of intraday ticks,
+        and "keep only first+last after a week" would throw away the very window you
+        debug a bad fill in.
+
+        ==================  ===========================================
+        近 ``thin_after_days`` 天   一行不少（"10:31 那会儿看到什么" 全靠这里）
+        到 ``keep_days`` 天        每小时留一行 + 当天首末
+        更早                      只留当天首末（开盘/收盘够对账用）
+        ==================  ===========================================
         """
         moment = _as_ts(now)
         days = int(self.keep_days if keep_days is None else keep_days)
-        cutoff = str((moment - pd.Timedelta(days=days)).date())
+        thin_days = int(self.thin_after_days if thin_after_days is None else thin_after_days)
+        thin_days = max(0, min(thin_days, days))
+        hard_cutoff = str((moment - pd.Timedelta(days=days)).date())
+        thin_cutoff = str((moment - pd.Timedelta(days=thin_days)).date())
         with self._session() as conn:
-            result = self._prune_in(conn, cutoff)
+            result = self._prune_in(conn, hard_cutoff, thin_cutoff)
             self._meta_set(conn, "last_prune", str(moment.date()))
         return result
 
     @staticmethod
-    def _prune_in(conn: sqlite3.Connection, cutoff: str) -> dict:
+    def _prune_in(conn: sqlite3.Connection, cutoff: str, thin_cutoff: str | None = None) -> dict:
         before = conn.execute("SELECT COUNT(*) AS n FROM quotes").fetchone()["n"]
+        # tier 1: older than ``cutoff`` -> first + last row of each day only
         conn.execute(
             """
             DELETE FROM quotes WHERE rowid IN (
@@ -1196,9 +1215,31 @@ class SnapshotStore:
             """,
             (cutoff,),
         )
+        # tier 2: between ``cutoff`` and ``thin_cutoff`` -> one row per hour + first/last
+        if thin_cutoff is not None:
+            conn.execute(
+                """
+                DELETE FROM quotes WHERE rowid IN (
+                    SELECT rowid FROM (
+                        SELECT rowid,
+                               ROW_NUMBER() OVER (PARTITION BY symbol, substr(fetched_at, 1, 10)
+                                                  ORDER BY fetched_at ASC)  AS first_rank,
+                               ROW_NUMBER() OVER (PARTITION BY symbol, substr(fetched_at, 1, 10)
+                                                  ORDER BY fetched_at DESC) AS last_rank,
+                               ROW_NUMBER() OVER (PARTITION BY symbol, substr(fetched_at, 1, 13)
+                                                  ORDER BY fetched_at ASC)  AS hour_rank
+                        FROM quotes
+                        WHERE substr(fetched_at, 1, 10) >= ? AND substr(fetched_at, 1, 10) < ?
+                    ) WHERE first_rank > 1 AND last_rank > 1 AND hour_rank > 1
+                )
+                """,
+                (cutoff, thin_cutoff),
+            )
         conn.execute("DELETE FROM fetch_runs WHERE substr(run_at, 1, 10) < ?", (cutoff,))
-        after = conn.execute("SELECT COUNT(*) AS n FROM quotes").fetchone()["n"]
-        return {"deleted": int(before - after), "kept": int(after), "cutoff": cutoff}
+        after = conn.execute("SELECT COUNT(*) AS n FROM quotes").fetchone()[0] if False else \
+            conn.execute("SELECT COUNT(*) AS n FROM quotes").fetchone()["n"]
+        return {"deleted": int(before - after), "kept": int(after),
+                "cutoff": cutoff, "thin_cutoff": thin_cutoff}
 
     def save(
         self,
@@ -1230,7 +1271,11 @@ class SnapshotStore:
             # At most one prune per calendar day: the DELETE is cheap but pointless
             # to run 4800 times between the open and the close.
             if auto_prune and self._meta_get(conn, "last_prune") != str(moment.date()):
-                self._prune_in(conn, str((moment - pd.Timedelta(days=self.keep_days)).date()))
+                self._prune_in(
+                    conn,
+                    str((moment - pd.Timedelta(days=self.keep_days)).date()),
+                    str((moment - pd.Timedelta(days=self.thin_after_days)).date()),
+                )
                 self._meta_set(conn, "last_prune", str(moment.date()))
         return len(rows)
 

@@ -32,6 +32,14 @@ REPORTS = ROOT / "reports"
 ENGINE = ROOT / "quant_system"
 CACHE = ROOT / "data" / "cache"
 
+# Modules that cannot change a research report: the execution/monitoring layer.
+# Editing them must NOT mark every published table stale -- that noise teaches people
+# to ignore this audit, which is the opposite of its job.  (Observed 2026-11-09: a
+# mid-run edit to realtime.py flagged 6 of 20 reports while no number moved.)
+# tests/test_audit_staleness.py asserts every top-level module is classified here or
+# counts as engine, so a new module forces an explicit decision.
+EXECUTION_ONLY = {"realtime.py", "advice.py"}
+
 # Directories that are regenerated on demand rather than produced by a study.
 TRANSIENT = {"dashboard", "verification", "publish_check", "runs"}
 
@@ -130,7 +138,9 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
 
-    code_mtime = newest_mtime(ENGINE.glob("*.py"))
+    code_mtime = newest_mtime(
+        path for path in ENGINE.glob("*.py") if path.name not in EXECUTION_ONLY
+    )
     cache_files = list(CACHE.glob("*.parquet"))
     data_mtime = newest_mtime(cache_files)
     print("engine newest: %s" % datetime.fromtimestamp(code_mtime).strftime("%Y-%m-%d %H:%M"), flush=True)

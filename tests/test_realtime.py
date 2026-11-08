@@ -992,3 +992,36 @@ def test_duplicate_lines_keep_the_last_one_in_the_board() -> None:
     assert len(quotes) == 2                       # parser is honest: it saw two prints
     board = Board(quotes={q.symbol: annotate(q, now=TRADING_NOON) for q in quotes})
     assert board.quotes["sh600519"].price == pytest.approx(1460.0)   # last wins
+
+
+def test_prune_thins_the_middle_window_to_one_row_per_hour(tmp_path) -> None:
+    """Measured: a running desk writes ~10 MB of ticks per trading day.
+
+    Keeping 60 days at full fidelity would be ~600 MB; keeping only first+last from
+    day 6 would throw away the window you debug a bad fill in.  So the middle window
+    keeps one row per (symbol, hour) plus the day's first and last.
+    """
+    store = SnapshotStore(tmp_path / "quotes.sqlite", keep_days=60, thin_after_days=5)
+    day = TRADING_NOON - pd.Timedelta(days=10)          # inside the thin window
+    for minutes in (0, 3, 6, 60, 63, 120):              # two full hours + one row
+        moment = day + pd.Timedelta(minutes=minutes)
+        store.save([parse_payload(_payload(), fetched_at=moment)[0]], run_at=moment, auto_prune=False)
+
+    result = store.prune(now=TRADING_NOON, keep_days=60, thin_after_days=5)
+    history = store.history("sh600519", limit=50)
+    kept = sorted(history["fetched_at"].tolist())
+    # first (09:30:00-ish base +0) , one per hour (the earliest of each hour) and the last
+    assert len(kept) < 6, kept
+    assert kept[0] == sorted(kept)[0] and kept[-1] == sorted(kept)[-1]
+    hours = {stamp[11:13] for stamp in kept}
+    assert len(hours) >= len(kept) - 2, kept        # at most first/last extra per day
+    assert result["thin_cutoff"] is not None
+
+
+def test_prune_keeps_recent_rows_untouched(tmp_path) -> None:
+    store = SnapshotStore(tmp_path / "quotes.sqlite", keep_days=60, thin_after_days=5)
+    for minutes in (0, 3, 6):
+        moment = TRADING_NOON + pd.Timedelta(minutes=minutes)
+        store.save([parse_payload(_payload(), fetched_at=moment)[0]], run_at=moment, auto_prune=False)
+    store.prune(now=TRADING_NOON + pd.Timedelta(days=1), keep_days=60, thin_after_days=5)
+    assert len(store.history("sh600519", limit=50)) == 3, "近 5 天必须一行不少"

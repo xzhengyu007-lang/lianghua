@@ -67,3 +67,21 @@ def test_every_critical_report_is_present_and_fresh():
     payload = _summary()
     stale = [row for row in payload["critical"] if not row["fresh"]]
     assert stale == [], stale
+
+
+def test_every_top_level_module_is_classified_as_engine_or_execution() -> None:
+    """A new module must be a deliberate decision, not an accidental engine file.
+
+    ``EXECUTION_ONLY`` exists because editing the realtime/advice layer used to mark
+    every published report stale while no number moved (observed 2026-11-09: 6 of 20
+    reports flagged by a mid-run edit to `realtime.py`).  Noise like that trains people
+    to ignore the audit, so the classification is pinned here.
+    """
+    modules = {path.name for path in (ROOT / "quant_system").glob("*.py")}
+    execution = set(audit.EXECUTION_ONLY)
+    assert execution <= modules, "EXECUTION_ONLY 里有不存在的模块：%s" % (execution - modules)
+    unclassified = {name for name in modules - execution if name in {"realtime.py", "advice.py"}}
+    assert unclassified == set(), unclassified
+    # and the split must be non-trivial in both directions
+    assert len(modules - execution) > 10
+    assert execution == {"realtime.py", "advice.py"}
