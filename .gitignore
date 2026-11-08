@@ -8,6 +8,7 @@ pytest-of-*/
 pytest-*/
 data/cache/
 data/cache_rawcheck/
+data/cache_probe/
 reports/runs/
 .DS_Store
 

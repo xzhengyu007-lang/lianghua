@@ -4,9 +4,9 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 118 |
-| 在研究日志里出现过 | 76 |
-| 有对应测试 | 47 |
+| 脚本总数 | 119 |
+| 在研究日志里出现过 | 77 |
+| 有对应测试 | 48 |
 | **两者都没有（孤儿）** | **40** |
 
 ## 孤儿脚本（未记录、未测试）
@@ -145,6 +145,7 @@
 | `run_rebalance_anchor.py` | run | ✓ | — | Rebalance-anchor sensitivity: how much of the headline is calendar luck? |
 | `run_rebalance_calendar.py` | run | ✓ | — | Rebalance calendar: fixed 20-bar cadence vs calendar month-end. |
 | `run_robustness.py` | run | — | — | Robustness study for the default low-vol core configuration. |
+| `run_sample_extent.py` | run | ✓ | ✓ | How far back could the panel actually go, if the download were extended? |
 | `run_score_weights.py` | run | ✓ | — | Score weights: is the 20% trend term buying anything? |
 | `run_sector_attribution.py` | run | ✓ | — | Sector attribution for the finished walk-forward windows (2022-23, 2024-26). |
 | `run_sector_cap_negative.py` | run | — | — | Sector-cap alternatives, kept as a negative-result record. |
