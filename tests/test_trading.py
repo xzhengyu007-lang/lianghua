@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -537,3 +538,38 @@ def test_the_loop_closes(tmp_path) -> None:
     report = reconcile(booked, {"sh600519": 2000}, broker_cash=booked.cash, trade_date=TRADE_DATE)
     assert report.ok is True
     assert equity_curve(tmp_path / "equity.jsonl").iloc[-1]["positions"] == 1
+
+
+# --------------------------------------------------------------------------- #
+# the paper replay script: the 20-session equity curve must be reproducible
+# --------------------------------------------------------------------------- #
+def test_paper_replay_builds_one_equity_point_per_session(tmp_path) -> None:
+    """Regression for "missing price for held symbol".
+
+    ``plan_orders`` values the whole book to size orders, so a name that drops out
+    of the target basket while still held must still have a price in the vector --
+    the replay, the CLI plan and the desk all had to be fixed for that.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from run_paper_replay import replay  # noqa: E402
+
+    rng = np.random.default_rng(5)
+    index = pd.bdate_range("2025-01-02", periods=140)
+    panel = {}
+    for i in range(6):
+        close = pd.Series(10.0 * np.exp(np.cumsum(rng.normal(0.0004, 0.008 + i * 0.001, len(index)))), index=index)
+        panel["sh6000%02d" % i] = pd.DataFrame(
+            {"open": close * 1.001, "high": close * 1.01, "low": close * 0.99,
+             "close": close, "volume": 900_000.0},
+            index=index,
+        )
+    summary = replay(
+        panel, sessions=3, equity=200_000.0, output=tmp_path / "replay",
+        cache_dir=tmp_path / "no-cache",  # prices come from the panel, not the cache
+    )
+    assert summary["sessions"] == 3
+    assert summary["rows"] and all(row["exec_day"] for row in summary["rows"])
+    assert (tmp_path / "replay" / "equity.jsonl").exists()
+    assert (tmp_path / "replay" / "summary.json").exists()

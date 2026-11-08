@@ -4,10 +4,10 @@
 
 | 项 | 数量 |
 |---|---:|
-| 脚本总数 | 126 |
+| 脚本总数 | 127 |
 | 在研究日志里出现过 | 84 |
 | 有对应测试 | 54 |
-| **两者都没有（孤儿）** | **40** |
+| **两者都没有（孤儿）** | **41** |
 
 ## 孤儿脚本（未记录、未测试）
 
@@ -37,6 +37,7 @@
 | `run_oos_sector_cap.py` | run | 89 | Out-of-sample selection experiment for the sector cap. |
 | `run_oos_sector_cap_v2.py` | run | 119 | Does a sector cap help out of sample once the harmful regime switch is off? |
 | `run_overlay_ablation.py` | run | 80 | Benchmark-relative robustness: is the edge real after removing the |
+| `run_paper_replay.py` | run | 202 | Replay the paper loop over the last N sessions (the missing evidence artifact). |
 | `run_pit_breadth.py` | run | 249 | Point-in-time comparison of fixed top_n=6 vs top_n=8. |
 | `run_pit_walkforward.py` | run | 127 | Walk-forward the point-in-time pool and a survivor-only control. |
 | `run_random_control_pit.py` | run | 134 | Random-selection control on the point-in-time pool. |
@@ -131,6 +132,7 @@
 | `run_oos_sector_cap.py` | run | — | — | Out-of-sample selection experiment for the sector cap. |
 | `run_oos_sector_cap_v2.py` | run | — | — | Does a sector cap help out of sample once the harmful regime switch is off? |
 | `run_overlay_ablation.py` | run | — | — | Benchmark-relative robustness: is the edge real after removing the |
+| `run_paper_replay.py` | run | — | — | Replay the paper loop over the last N sessions (the missing evidence artifact). |
 | `run_param_ensemble.py` | run | ✓ | — | Parameter averaging: can we buy robustness without giving up return? |
 | `run_param_panel.py` | run | ✓ | — | Parameter panel: does the published setting survive all three windows? |
 | `run_phase_average.py` | run | ✓ | — | Does averaging rebalance phases remove calendar luck, or dilute the edge? |

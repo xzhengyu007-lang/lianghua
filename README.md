@@ -169,8 +169,23 @@ python -m venv .venv
 | 技术栈 | stdlib `ThreadingHTTPServer` + 原生 JS + 单个 vendored 图表文件（Apache-2.0）；**无 Node、无构建、无 CDN** |
 | 文档 | `docs/UI方案.md`（选型理由、10 万根方案、防误触、实测） |
 
+模拟盘 20 日权益曲线（证据产物，`reports/paper_replay/`）：
+
+```powershell
+.\.venv\Scripts\python.exe scriptsun_paper_replay.py --sessions 20 --equity 1000000
+# 回放 20 个交易日（2026-10-12 → 2026-11-06）：累计 +1.58%，最大回撤 -2.93%，费用 771.61
+```
+
 页面把"缺什么"说清楚而不是空白：没有账本/建议卡时给出该跑哪条命令；数据闸门关闭时只显示告警；
 命令行 `aq trade --action kill` 之后页面在 3 秒内变红（服务端每次读状态都检查 `gate.json` 的 mtime）。
+
+模拟盘 20 日权益曲线（证据产物，落在 `reports/paper_replay/`）：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_paper_replay.py --sessions 20 --equity 1000000
+# 回放 20 个交易日（2026-10-12 → 2026-11-06）：累计 +1.58%，最大回撤 -2.93%，费用 771.61
+# 口径：逐日截断面板重算信号（无前视）、按次日开盘价 +5bp 滑点成交、走 paper 的账本路径
+```
 
 
 `pit` 股票池 = 128 只当前宽基 + `data/delisted_manifest.json` 中 140 只真实退市股，

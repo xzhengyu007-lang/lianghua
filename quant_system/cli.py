@@ -1128,6 +1128,14 @@ def cmd_trade(args: argparse.Namespace) -> int:
             for symbol, quote in board.quotes.items():
                 if quote.price > 0:
                     prices[symbol] = quote.price
+        # plan_orders values the whole book, so held names that dropped out of the
+        # target basket still need a price; otherwise sizing fails loudly.
+        missing_marks = [s for s in ledger.positions if s not in prices.index]
+        for symbol in missing_marks:
+            try:
+                prices[symbol] = float(load_symbol(symbol, Path(args.cache_dir))["close"].iloc[-1])
+            except (FileNotFoundError, IndexError):
+                continue
         equity = args.equity if args.equity else (
             ledger.equity(prices.reindex(ledger.positions.keys()).fillna(0.0)) if len(prices) else ledger.cash
         )

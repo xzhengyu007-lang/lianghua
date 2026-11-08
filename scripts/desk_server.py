@@ -397,6 +397,21 @@ class Handler(BaseHTTPRequestHandler):
                 quote = board.quotes.get(item["symbol"])
                 if quote is not None and quote.price > 0:
                     prices[item["symbol"]] = float(quote.price)
+        # A held name can leave the target basket; it still needs a mark or sizing
+        # fails ("missing price for held symbol").  Fall back to the cached close.
+        from quant_system.data import load_symbol
+
+        for symbol in ledger.positions:
+            if symbol in prices.index and prices[symbol] > 0:
+                continue
+            quote = board.quotes.get(symbol) if board is not None else None
+            if quote is not None and quote.price > 0:
+                prices[symbol] = float(quote.price)
+                continue
+            try:
+                prices[symbol] = float(load_symbol(symbol)["close"].iloc[-1])
+            except (FileNotFoundError, IndexError, KeyError):
+                continue
         equity = float(body.get("equity") or card.get("equity") or 1_000_000.0)
         outcome = plan_session(
             ledger=ledger, target_weights=weights, prices=prices, gate=state.gate,
