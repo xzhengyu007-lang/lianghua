@@ -284,6 +284,10 @@ class AdviceCard:
     last_trading_day: str | None = None
     bars_since_rebalance: int | None = None
     last_rebalance: str | None = None
+    # Strongest names that did NOT make the basket.  The desk shows them so the
+    # user can see who is about to replace a holding -- "是否在信号篮" is a column,
+    # not a judgement the page should make up.
+    watchlist: list = field(default_factory=list)
 
     # ---------- reporting --------------------------------------------------
     def to_dict(self) -> dict:
@@ -301,6 +305,7 @@ class AdviceCard:
             "uncertainty": self.uncertainty.to_dict(),
             "risk": self.risk,
             "items": [item.to_dict() for item in self.items],
+            "watchlist": list(self.watchlist),
             "warnings": list(self.warnings),
             "disclaimer": self.disclaimer,
         }
@@ -366,6 +371,13 @@ class AdviceCard:
         for warning in self.warnings:
             lines.append("- ⚠ %s" % warning)
         if self.warnings:
+            lines.append("")
+
+        if self.watchlist:
+            lines.append("候补（最强、但没进篮子）：" + "，".join(
+                "%s(分 %.2f)" % (row.get("symbol"), float(row.get("score") or 0.0))
+                for row in self.watchlist[:5]
+            ))
             lines.append("")
 
         # 4. why + risk per name
@@ -632,6 +644,7 @@ def build_card(
         equity=float(equity),
         today=moment,
     )
+    card.watchlist = signal.watchlist.to_dict(orient="records") if len(signal.watchlist) else []
     card.as_of = str(signal.as_of.date())
     card.last_rebalance = str(signal.last_rebalance.date()) if signal.last_rebalance is not None else None
     card.bars_since_rebalance = signal.bars_since_rebalance

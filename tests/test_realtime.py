@@ -938,3 +938,57 @@ def test_calendar_disk_cache_is_reused_and_invalidated(tmp_path, monkeypatch) ->
     rt._CALENDAR_CACHE.clear()
     third = rt.load_calendar(cache, disk_cache=disk)
     assert third.last == pd.Timestamp("2026-01-08").date()
+
+
+# --------------------------------------------------------------------------- #
+# adversarial payloads: a free endpoint will eventually send garbage
+# --------------------------------------------------------------------------- #
+def test_a_truncated_record_is_skipped_not_half_parsed() -> None:
+    """Fewer than the fields we rely on: drop the record entirely."""
+    short = 'v_sh600519="1~样本~600519~100.0~99.0";'
+    quotes = parse_payload(short + _payload(), fetched_at=TRADING_NOON)
+    assert [q.symbol for q in quotes] == ["sh600519"]
+    assert quotes[0].price == pytest.approx(1453.0)
+
+
+def test_a_non_numeric_price_becomes_no_quote_and_never_a_zero_price() -> None:
+    payload = _payload(price="--", prev_close="--", open_="--", volume="--")
+    quote = parse_payload(payload, fetched_at=TRADING_NOON)[0]
+    assert quote.status == "no_quote"
+    assert quote.can_buy is False and quote.can_sell is False
+    board = Board(quotes={quote.symbol: annotate(quote, now=TRADING_NOON)})
+    assert "| — |" in board.markdown(), board.markdown()
+
+
+def test_a_negative_price_is_treated_as_unusable() -> None:
+    quote = parse_payload(_payload(price=-1.0), fetched_at=TRADING_NOON)[0]
+    assert quote.status == "no_quote"
+    assert quote.price <= 0
+
+
+def test_an_impossible_timestamp_falls_back_to_the_fetch_time() -> None:
+    quote = parse_payload(_payload(when="99999999999999"), fetched_at=TRADING_NOON)[0]
+    assert quote.quote_time == TRADING_NOON
+    # and it must therefore be judged against the fetch instant, not silently "fresh"
+    assert annotate(quote, now=TRADING_NOON).age_seconds == pytest.approx(0.0)
+
+
+def test_decoding_noise_does_not_destroy_the_numbers() -> None:
+    """GBK bytes we cannot decode are replaced; the ASCII fields must survive."""
+    payload = _payload(name="\ufffd\ufffd\ufffd")
+    quote = parse_payload(payload, fetched_at=TRADING_NOON)[0]
+    assert quote.price == pytest.approx(1453.0)
+
+
+def test_empty_and_junk_payloads_parse_to_nothing() -> None:
+    for junk in ("", "   ", "garbage", "v_sh600519=;", "=", ";;;"):
+        assert parse_payload(junk, fetched_at=TRADING_NOON) == []
+
+
+def test_duplicate_lines_keep_the_last_one_in_the_board() -> None:
+    first = _payload(price=1453.0)
+    second = _payload(price=1460.0)
+    quotes = parse_payload(first + second, fetched_at=TRADING_NOON)
+    assert len(quotes) == 2                       # parser is honest: it saw two prints
+    board = Board(quotes={q.symbol: annotate(q, now=TRADING_NOON) for q in quotes})
+    assert board.quotes["sh600519"].price == pytest.approx(1460.0)   # last wins

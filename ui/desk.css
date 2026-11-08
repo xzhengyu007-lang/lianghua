@@ -73,6 +73,12 @@ body {
 .panel h2 { font-size: 13px; margin: 0 0 8px; font-weight: 600; color: var(--dim); letter-spacing: .3px; }
 .dim { color: var(--dim); font-size: 12px; }
 .hint { color: var(--dim); font-size: 12px; margin: 6px 0 0; }
+.watch { margin: 6px 0 0; font-size: 12px; color: var(--dim); display: flex; gap: 6px; flex-wrap: wrap; }
+.chipwatch {
+  border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px; cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.chipwatch:hover { border-color: var(--accent); color: var(--text); }
 
 /* ---------- 表格 ---------- */
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }

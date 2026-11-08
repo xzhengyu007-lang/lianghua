@@ -127,7 +127,6 @@ function renderBasket(card, quotes) {
       : '没有目标篮（100% 现金或尚未生成建议卡）';
     return;
   }
-  $('basket-hint').textContent = `${rows.length} 只｜目标权重合计 ${pct(rows.reduce((sum, r) => sum + r.weight, 0))}`;
   const board = (quotes.board && quotes.board.quotes) || {};
   rows.forEach((item) => {
     const quote = board[item.symbol] || {};
@@ -146,9 +145,23 @@ function renderBasket(card, quotes) {
     row.addEventListener('click', () => loadBars(item.symbol));
     body.appendChild(row);
   });
+  const watch = (card && card.watchlist) || [];
+  const hint = $('basket-hint');
+  hint.textContent = `${rows.length} 只｜目标权重合计 ${pct(rows.reduce((sum, r) => sum + r.weight, 0))}` +
+    (watch.length ? `｜候补 ${watch.length} 只（未在篮）` : '');
   const select = $('symbol-select');
   select.innerHTML = rows.map((item) =>
     `<option value="${item.symbol}">${item.symbol} ${item.name || ''}</option>`).join('');
+  const watchBox = $('watchlist');
+  if (watchBox) {
+    watchBox.innerHTML = watch.length
+      ? '候补（最强但未入篮）：' + watch.slice(0, 5).map((row) =>
+          `<span class="chipwatch" data-symbol="${row.symbol}">${row.symbol} ${fmt(row.score, 2)}</span>`).join('')
+      : '';
+    watchBox.querySelectorAll('.chipwatch').forEach((chip) => {
+      chip.addEventListener('click', () => loadBars(chip.dataset.symbol));
+    });
+  }
   if (!currentSymbol) loadBars(rows[0].symbol);
 }
 
