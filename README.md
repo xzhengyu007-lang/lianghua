@@ -141,6 +141,7 @@ python -m venv .venv
 | `signal` | 最新收盘目标权重、股数、金额、行业与风险提示；目标权重与回测共用 `normalize_targets`（先截单票 25%、再缩总仓位 95%），`--equity` 按账户总权益定量 |
 | `brief` | 一页日常简报：数据健康（在册/退市/停牌分开计）、下一开盘目标篮、事前波动与 beta、持仓集中度，可选接入模拟盘账本给出目标/实际偏差；最新 bar 落后当天超过 5 个交易日会直接告警（§23.69）；输出 `brief.md` / `brief.json` / `brief.html` |
 | `paper` | 模拟盘账本：按最新信号下单、登记成交、与券商对账 |
+| `quote` | L1 快照行情（**只服务执行与监控，绝不进回测/因子/信号**）：50 只/批、同一来源两轮间隔 ≥3s、失败两次即降级到本地最后快照并按真实时间标注滞后；给出买一/卖一、停牌/涨跌停状态、涨停跌停价与 T+1 可卖数量；`--offline` 只读本地快照库，`--json` 给 UI 用。见 `docs/实时行情与交易架构.md` |
 | `compare` | 多策略滚动样本外对比 |
 | `bootstrap-ci` | 对 walk-forward 净值做平稳块自助法：给出 CAGR/Sharpe/回撤的 95% 区间，并用配对重采样检验「A 是否真的优于 B」；`--suite` 复现本轮 trend 参数对照 |
 | `attribution` | 对已完成的 `backtest`/`walkforward` 目录（`positions.csv` + `equity.csv`）做 Brinson-Fachler 月度行业归因：把相对等权全池的超额拆成行业配置 / 行业内选股 / 交互，残差为 1e-16 量级；`--report-dir` 指向被归因的报告，价格口径沿用全局 `--adjustment` |

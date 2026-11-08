@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -912,6 +913,76 @@ def cmd_paper(args: argparse.Namespace) -> int:
     return 0
 
 
+def _quote_symbols(args: argparse.Namespace) -> list[str]:
+    """Symbols for the quote round: explicit list first, today's signal second.
+
+    ``--symbols`` exists on both parsers (global: ``nargs="+"``, quote: one
+    string), so the value can arrive as a list or as a single comma string.
+    Treating a string as an iterable of characters is how ``'600519'`` turns into
+    the symbol ``'6'`` -- the bug this branch exists to prevent.
+    """
+    raw = getattr(args, "symbols", None) or []
+    if isinstance(raw, str):
+        raw = [raw]
+    symbols: list[str] = []
+    for item in raw:
+        symbols.extend(part.strip() for part in str(item).split(",") if part.strip())
+    if symbols:
+        return symbols
+    today = Path("reports") / "signal_today" / "orders.csv"
+    if today.exists():
+        frame = pd.read_csv(today, encoding="utf-8-sig")
+        if "symbol" in frame:
+            return [str(s) for s in frame["symbol"].dropna()]
+    raise ValueError(
+        "no symbols: pass --symbols=600519,000001 or generate a signal first "
+        "(python -m quant_system ... signal)"
+    )
+
+
+def cmd_quote(args: argparse.Namespace) -> int:
+    """L1 snapshot quotes: execution and monitoring only, never research."""
+    from .realtime import (
+        DEFAULT_STORE,
+        SnapshotStore,
+        TencentQuoteSource,
+        load_board,
+        refresh,
+        throttle_remainder,
+    )
+
+    symbols = _quote_symbols(args)
+    store = SnapshotStore(args.store or DEFAULT_STORE)
+    if args.offline:
+        board = load_board(symbols, store=store, stale_after=args.stale_after)
+    else:
+        owed = throttle_remainder(store)
+        if owed > 0:
+            print(f"限频：等待 {owed:.1f}s（上一轮请求未满 3s）", file=sys.stderr)
+            time.sleep(owed)
+        board = refresh(
+            symbols,
+            source=TencentQuoteSource(attempts=args.attempts),
+            store=store,
+            stale_after=args.stale_after,
+        )
+    payload = board.to_dict()
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+    else:
+        print(board.markdown())
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+        )
+        print(f"-> {output}")
+    # A degraded round is not a command failure: outside trading hours every
+    # quote is stale by construction, and the desk must keep working offline.
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aq", description="A-share quantitative system")
     parser.add_argument("--cache-dir", default=str(CACHE_DIR))
@@ -1150,6 +1221,27 @@ def build_parser() -> argparse.ArgumentParser:
     boot.add_argument("--seed", type=int, default=20261107)
     boot.add_argument("--output")
     boot.set_defaults(func=cmd_bootstrap_ci)
+    quote = sub.add_parser(
+        "quote",
+        help="L1 snapshot quotes for execution and monitoring (never used by research)",
+    )
+    quote.add_argument(
+        "--symbols",
+        default=None,
+        help="comma-separated symbols; falls back to reports/signal_today/orders.csv",
+    )
+    quote.add_argument(
+        "--offline",
+        action="store_true",
+        help="read the local snapshot store only (no network); every price is then stale",
+    )
+    quote.add_argument("--json", action="store_true", help="print the JSON payload instead of a table")
+    quote.add_argument("--store", default=None, help="sqlite snapshot store (default reports/realtime/quotes.sqlite)")
+    quote.add_argument("--attempts", type=int, default=2, help="retries per batch before degrading")
+    quote.add_argument("--stale-after", type=float, default=60.0,
+                       help="seconds after which an in-session print counts as lagging")
+    quote.add_argument("--output", default=None, help="also write the JSON payload here")
+    quote.set_defaults(func=cmd_quote)
     return parser
 
 
