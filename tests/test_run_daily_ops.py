@@ -28,7 +28,7 @@ from quant_system.paper import Ledger  # noqa: E402
 from quant_system.trading import RiskLimits, TradingGate, TradingLevel  # noqa: E402
 from run_daily_ops import run_daily_ops, split_rejections, _exit_code, Step  # noqa: E402
 
-TRADE_DATE = "2026-11-09"
+TRADE_DATE = "2026-11-06"  # the session the synthetic cache actually covers
 
 
 # --------------------------------------------------------------------------- #
@@ -122,6 +122,33 @@ def _run(env, **kwargs) -> dict:
 # --------------------------------------------------------------------------- #
 # the happy path
 # --------------------------------------------------------------------------- #
+def test_the_report_is_filed_under_the_session_that_closed(env) -> None:
+    """A run after midnight still belongs to the session that just ended.
+
+    ``trade_date`` stays the decision day (it is what the orders execute in and
+    what the idempotency keys carry), but the report is a statement about the
+    session that closed -- filing Friday's close under "Saturday" would make two
+    different runs of the same session land in two different folders.
+    """
+    summary = _run(env, trade_date="2026-11-08")  # a Saturday
+    assert summary["session_date"] == "2026-11-06", summary
+    assert summary["trade_date"] == "2026-11-08"
+    assert Path(summary["report"]).parent.name == "2026-11-06"
+    report = Path(summary["report"]).read_text(encoding="utf-8")
+    assert "# 收盘作业 2026-11-06" in report
+    assert "决策日 2026-11-08" in report
+
+
+def test_a_session_whose_bar_is_missing_blocks_the_whole_run(env) -> None:
+    """Monday's close with Friday's cache: no card, no orders, exit code 1."""
+    summary = _run(env, trade_date="2026-11-09")
+    assert summary["exit_code"] == 1, summary
+    signal = next(step for step in summary["steps"] if step["name"] == "signal")
+    assert signal["status"] in {"blocked", "warn"}, signal
+    assert not (env["trading"] / "orders.jsonl").exists()
+    assert summary["session_date"] == "2026-11-09"
+
+
 def test_one_command_produces_a_report_with_every_section(env) -> None:
     summary = _run(env)
     assert summary["exit_code"] == 0, summary
@@ -169,7 +196,7 @@ def test_a_stale_panel_blocks_the_day_and_says_so(env) -> None:
     assert summary["exit_code"] == 1
     signal = summary["steps"][0]
     assert signal["status"] == "blocked"
-    assert any("上一交易日" in note for note in signal["notes"])
+    assert any("最近已收盘交易日" in note for note in signal["notes"])
     report = Path(summary["report"]).read_text(encoding="utf-8")
     assert "⛔" in report or "被闸门拦住" in report
 

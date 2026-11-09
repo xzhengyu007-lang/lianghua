@@ -1006,11 +1006,21 @@ def cmd_quote(args: argparse.Namespace) -> int:
 def cmd_advice(args: argparse.Namespace) -> int:
     """Advice card: six elements, uncertainty on the same screen, hard freshness gate."""
     from .advice import build_card, write_card
-    from .realtime import DEFAULT_STORE, SnapshotStore, previous_trading_day, refresh
+    from .realtime import DEFAULT_STORE, SnapshotStore, last_completed_session, now_cn, refresh
 
     panel = _panel_from_args(args)
-    today = pd.Timestamp(args.today) if args.today else pd.Timestamp.now().normalize()
-    last_trading = previous_trading_day(today.date())
+    # Without ``--today`` the card decides for the *next* session, so the cache
+    # must contain the last session that has closed.  With ``--today D`` the
+    # caller is replaying D's open, which needs the bars up to the close before D.
+    if args.today:
+        moment = pd.Timestamp(args.today) + pd.Timedelta(hours=9, minutes=15)
+    else:
+        moment = now_cn()
+    # The gate wants the *aware* moment (it compares against exchange prints);
+    # everything downstream is naive wall-clock, as the research side expects.
+    today = pd.Timestamp(moment)
+    today = today.tz_localize(None) if today.tzinfo is not None else today
+    today = today.normalize()
     benchmark = _benchmark(args)
 
     board = None
@@ -1030,6 +1040,8 @@ def cmd_advice(args: argparse.Namespace) -> int:
     ledger = None
     if args.ledger:
         ledger = Ledger.load(args.ledger)
+
+    last_trading = last_completed_session(moment, witness=board.print_date if board else None)
 
     card = build_card(
         panel,

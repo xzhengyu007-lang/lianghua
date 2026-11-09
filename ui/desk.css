@@ -116,6 +116,9 @@ select {
 .advice .headline { font-size: 14px; }
 .advice .caveat { color: var(--warn); }
 .advice .blocked { border: 1px solid var(--bad); border-radius: 8px; padding: 8px 10px; color: var(--bad); }
+#health .behind { border: 1px solid var(--bad); border-radius: 8px; padding: 8px 10px; color: var(--bad); margin-bottom: 8px; }
+#health .behind .dim { color: inherit; opacity: .8; margin-top: 4px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
 .advice table { width: 100%; border-collapse: collapse; margin: 6px 0; }
 .advice td, .advice th { border-bottom: 1px solid var(--line); padding: 3px 4px; font-size: 12px; }
 .advice .suspect { color: var(--warn); }

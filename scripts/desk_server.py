@@ -43,6 +43,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -52,10 +54,15 @@ REPORTS = ROOT / "reports"
 from quant_system.paper import Ledger, summarize  # noqa: E402
 from quant_system.realtime import (  # noqa: E402
     DEFAULT_STORE,
+    SESSION_LABELS,
     QuotePoller,
     SnapshotStore,
     default_source,
-    previous_trading_day,
+    last_completed_session,
+    load_calendar,
+    now_cn,
+    session_gap,
+    session_state,
 )
 from quant_system.trading import AuditLog, IdempotencyBook, TradingGate, TradingLevel  # noqa: E402
 from quant_system.trading.pipeline import default_paths, plan_session  # noqa: E402
@@ -111,6 +118,8 @@ class DeskState:
         self.poller: QuotePoller | None = None
         self._symbols: list[str] = []
         self._mtimes: dict[str, float] = {}
+        self.clock = now_cn          # test seam: the desk's "now" in one place
+        self.calendar = None         # test seam: the bar-session calendar
 
     # ---------- live artifacts --------------------------------------------
     def reload_if_changed(self) -> None:
@@ -219,14 +228,47 @@ class DeskState:
         ]
         return {"points": points, "last": points[-1] if points else None}
 
+    def session_block(self) -> dict:
+        """Which session has closed, versus which one the cache actually holds.
+
+        Two dates, on purpose.  ``last_completed_session`` is a fact about the
+        world (the exchange's own print, when the feed has one, else the bar
+        calendar), ``cache_as_of`` is a fact about our data.  Showing only one of
+        them is how a Friday cache passed itself off as current on Monday night.
+        """
+        moment = self.clock()
+        calendar = self.calendar if self.calendar is not None else load_calendar()
+        board = self.poller.status().board if self.poller is not None else None
+        witness = board.print_date if board is not None else None
+        expected = last_completed_session(moment, calendar=calendar, witness=witness)
+        card = self.advice() or {}
+        if card.get("as_of"):
+            cache_as_of = pd.Timestamp(card["as_of"]).date()
+        else:
+            cache_as_of = calendar.last
+        behind = session_gap(cache_as_of, expected, calendar=calendar)
+        state = session_state(moment)
+        return {
+            "now": moment.strftime("%Y-%m-%d %H:%M:%S"),
+            "session": state,
+            "session_label": SESSION_LABELS.get(state, state),
+            "last_completed_session": str(expected),
+            "cache_as_of": str(cache_as_of) if cache_as_of else None,
+            "behind_sessions": behind,
+            "stale": behind > 0,
+            "witness": str(witness) if witness else None,
+        }
+
     def state(self) -> dict:
         self.reload_if_changed()
-        today = date.today()
-        last_trading = str(previous_trading_day(today))
+        world = self.session_block()
+        today = self.clock().date()
+        last_trading = world["last_completed_session"]
         return {
             "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "today": str(today),
             "last_trading_day": last_trading,
+            "world": world,
             "gate": self.gate.describe(today),
             "quotes": self.quote_block(),
             "advice": self.advice(),
@@ -385,6 +427,21 @@ class Handler(BaseHTTPRequestHandler):
         if card.get("blocked"):
             return {"blocked": True, "reasons": card.get("block_reasons", []),
                     "plan": None, "note": "数据闸门已关闭：本日不出建议，也不排单"}
+        # ``blocked`` is frozen at generation time; the card can go stale later
+        # (generated Friday, now Monday night).  Re-derive the verdict here --
+        # trusting the file's flag would hand a day-old book to the broker.
+        world = state.session_block()
+        if world["stale"]:
+            return {
+                "blocked": True,
+                "reasons": [
+                    "建议卡的基准日 %s 落后于最近已收盘交易日 %s（差 %d 个交易日）："
+                    "先补数据再生成建议卡"
+                    % (world["cache_as_of"], world["last_completed_session"], world["behind_sessions"])
+                ],
+                "plan": None,
+                "note": "卡片已过期：不排单",
+            }
         import pandas as pd
 
         ledger = Ledger.load(ledger_path)

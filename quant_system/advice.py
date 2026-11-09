@@ -343,7 +343,7 @@ class AdviceCard:
         lines.append("### 2. 数据健康")
         lines.append("")
         lines.append(
-            "- 缓存最新交易日 **%s**（上一交易日 %s）；在册 %s 只，当日有 bar %s 只，覆盖率 **%.1f%%**"
+            "- 缓存最新交易日 **%s**（最近已收盘交易日 %s）；在册 %s 只，当日有 bar %s 只，覆盖率 **%.1f%%**"
             % (
                 data.get("as_of"), self.last_trading_day, data.get("live_symbols"),
                 data.get("on_latest_bar"), float(data.get("coverage") or 0.0) * 100,
@@ -453,7 +453,7 @@ class AdviceCard:
         data = self.data
         parts.append('<section class="health"><h2>数据健康</h2><p>')
         parts.append(
-            "缓存最新交易日 <b>%s</b>（上一交易日 %s）｜覆盖率 <b>%.1f%%</b>｜当日有 bar %s/%s 只"
+            "缓存最新交易日 <b>%s</b>（最近已收盘 %s）｜覆盖率 <b>%.1f%%</b>｜当日有 bar %s/%s 只"
             % (
                 esc(data.get("as_of")), esc(self.last_trading_day),
                 float(data.get("coverage") or 0.0) * 100,
@@ -596,6 +596,12 @@ def build_card(
     turns the price column into a live price with a timestamp and lets the card
     clamp limits to the real band.  Without it the card uses the signal close and
     says so on every row -- it never silently presents a close as a live price.
+
+    ``last_trading_day`` is the session whose closing bar must already be in the
+    cache: the last one that has *closed*, not "the day before today" (see
+    :func:`quant_system.realtime.last_completed_session`).  Passing the latter
+    makes the freshness gate certify its own input -- a Friday cache would look
+    current on Monday night.
     """
     moment = pd.Timestamp(today) if today is not None else pd.Timestamp.now().normalize()
     health = data_health(panel, today=moment)
@@ -617,8 +623,9 @@ def build_card(
     if last_trading_day is not None and health["as_of"] != last_trading_day:
         card.blocked = True
         card.block_reasons.append(
-            "缓存最新交易日 %s ≠ 上一交易日 %s：现在给出的目标篮会晚一个交易日执行"
-            % (health["as_of"], last_trading_day)
+            "缓存最新交易日 %s ≠ 最近已收盘交易日 %s：目标篮少了一个交易日的信息"
+            "（补上 %s 的收盘数据再生成；若此刻是开盘前，这条不会触发）"
+            % (health["as_of"], last_trading_day, last_trading_day)
         )
     if float(health.get("coverage") or 0.0) < min_coverage:
         card.blocked = True
@@ -651,7 +658,7 @@ def build_card(
     if last_trading_day is not None and signal.as_of != pd.Timestamp(last_trading_day):
         card.blocked = True
         card.block_reasons.append(
-            "信号基准日 %s ≠ 上一交易日 %s：不出建议" % (signal.as_of.date(), last_trading_day)
+            "信号基准日 %s ≠ 最近已收盘交易日 %s：不出建议" % (signal.as_of.date(), last_trading_day)
         )
         return card
     if signal.rows.empty:
@@ -812,7 +819,7 @@ def card_from_signal_json(
     if card.last_trading_day and card.as_of != card.last_trading_day:
         card.blocked = True
         card.block_reasons.append(
-            "归档信号基准日 %s ≠ 上一交易日 %s" % (card.as_of, card.last_trading_day)
+            "归档信号基准日 %s ≠ 最近已收盘交易日 %s" % (card.as_of, card.last_trading_day)
         )
     if not uncertainty.complete:
         card.blocked = True

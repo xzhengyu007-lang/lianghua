@@ -49,9 +49,11 @@ from quant_system.realtime import (  # noqa: E402
     DEFAULT_STORE,
     SnapshotStore,
     default_source,
+    last_completed_session,
     load_board,
-    previous_trading_day,
+    now_cn,
     refresh,
+    session_gap,
 )
 from quant_system.signals import latest_signal  # noqa: E402
 from quant_system.trading import (  # noqa: E402
@@ -121,9 +123,26 @@ def run_daily_ops(
 ) -> dict:
     """Run the five steps for one session and write the report.  Never raises for a
     business-level problem -- that is what the status fields are for."""
-    day = pd.Timestamp(trade_date) if trade_date else pd.Timestamp.now().normalize()
+    # An explicit --date means "run this session's close", so it is evaluated at
+    # the end of that day; without one the clock decides.  Either way the gate asks
+    # which session's bar must already exist -- never "the day before today".
+    moment = (
+        pd.Timestamp(trade_date) + pd.Timedelta(hours=23, minutes=59)
+        if trade_date
+        else now_cn()
+    )
+    # The gate compares against exchange prints, so it wants the aware moment;
+    # everything downstream (signals, cash, data health) is naive wall-clock.
+    day = pd.Timestamp(moment)
+    day = day.tz_localize(None) if day.tzinfo is not None else day
+    day = day.normalize()
     day_str = str(day.date())
-    last_trading = str(previous_trading_day(day.date()))
+    last_trading = str(last_completed_session(moment))
+    # The report is a statement about the session that just closed, so it is filed
+    # under that session even when the run happens after midnight (trade_date stays
+    # the decision day: it is what the orders are executed in, and what the
+    # idempotency keys and the audit log carry).
+    report_date = last_trading
     paths = default_paths(trading_dir)
     gate = TradingGate(paths["gate"])
     audit = AuditLog(paths["audit"])
@@ -131,6 +150,7 @@ def run_daily_ops(
     steps: list[Step] = []
     summary: dict = {
         "trade_date": day_str,
+        "session_date": report_date,
         "last_trading_day": last_trading,
         "generated_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "strategy": strategy,
@@ -159,10 +179,11 @@ def run_daily_ops(
     if health["as_of"] != last_trading:
         signal_step.status = "blocked"
         signal_step.notes.append(
-            "缓存最新交易日 %s ≠ 上一交易日 %s：今天不出建议（先 download）" % (health["as_of"], last_trading)
+            "缓存最新交易日 %s ≠ 最近已收盘交易日 %s：今天不出建议（先 download；差 %d 个交易日）"
+            % (health["as_of"], last_trading, session_gap(health["as_of"], last_trading))
         )
         steps.append(signal_step)
-        return _finish(summary, steps, reports_dir, day_str)
+        return _finish(summary, steps, reports_dir, report_date)
 
     signal = latest_signal(
         panel, strategy, params=params, equity=float(equity), today=day
@@ -200,6 +221,18 @@ def run_daily_ops(
 
     # ---- 2. advice -------------------------------------------------------
     advice_step = Step("advice")
+    # The exchange's newest print is evidence the calendar lacks; when it disagrees
+    # with the calendar guess (a holiday beyond coverage), the print wins and the
+    # disagreement is written into the report instead of silently resolved.
+    if board is not None and board.print_date is not None:
+        witnessed = str(last_completed_session(moment, witness=board.print_date))
+        if witnessed != last_trading:
+            signal_step.notes.append(
+                "交易所最新打印日 %s 与日历推断的已收盘交易日 %s 不一致，按打印日校验"
+                % (board.print_date, last_trading)
+            )
+            last_trading = witnessed
+            summary["last_trading_day"] = last_trading
     card = build_card(
         panel,
         strategy=strategy,
@@ -344,7 +377,7 @@ def run_daily_ops(
         recon_step.status = "ok" if report.ok else "mismatch"
     steps.append(recon_step)
 
-    return _finish(summary, steps, reports_dir, day_str)
+    return _finish(summary, steps, reports_dir, report_date)
 
 
 # --------------------------------------------------------------------------- #
@@ -426,10 +459,14 @@ def _exit_code(steps: list[Step]) -> int:
 
 
 def _report_markdown(summary: dict) -> str:
-    lines = ["# 收盘作业 %s" % summary["trade_date"], ""]
+    session = summary.get("session_date") or summary["trade_date"]
+    title = "# 收盘作业 %s" % session
+    if session != summary["trade_date"]:
+        title += "（决策日 %s，下一交易日开盘执行）" % summary["trade_date"]
+    lines = [title, ""]
     gate = summary["gate"]
     lines.append(
-        "- 级别 **%s** ｜ kill switch **%s** ｜ 上一交易日 %s"
+        "- 级别 **%s** ｜ kill switch **%s** ｜ 最近已收盘交易日 %s"
         % (gate["level_label"], "开" if gate["kill_switch"] else "关", summary["last_trading_day"])
     )
     lines.append("")

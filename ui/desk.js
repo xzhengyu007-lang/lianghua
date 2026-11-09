@@ -190,10 +190,19 @@ function renderLedger(ledger, equity) {
 
 function renderHealth(card) {
   const data = (card && card.data) || {};
+  const world = (lastState && lastState.world) || {};
+  const behind = Number(world.behind_sessions || 0);
   const coverage = Number(data.coverage || 0);
   const width = Math.max(0, Math.min(100, coverage * 100)).toFixed(1);
-  $('health').innerHTML = `
-    <div>缓存最新交易日 <b>${data.as_of || '—'}</b>（上一交易日 ${(lastState && lastState.last_trading_day) || '—'}）</div>
+  /* 两个日期必须分开展示：world 是交易所的，as_of 是缓存的。
+     只显示一个，就是周五的缓存冒充周一的"最新"。 */
+  const lag = behind > 0
+    ? `<div class="behind">⚠ 数据落后 <b>${behind}</b> 个交易日：市场已收盘到 <b>${world.last_completed_session || '—'}</b>，
+         这张卡依据的数据止于 <b>${data.as_of || '—'}</b>
+         <div class="dim">补上收盘数据后重跑 <code>aq advice --output reports/advice_today</code>；补上之前交易台不排单。</div></div>`
+    : '';
+  $('health').innerHTML = `${lag}
+    <div>缓存最新交易日 <b>${data.as_of || '—'}</b>（最近已收盘 ${world.last_completed_session || '—'}）</div>
     <div class="bar"><span style="width:${width}%;background:${coverage >= 0.95 ? 'var(--ok)' : 'var(--bad)'}"></span></div>
     <div>覆盖率 ${pct(coverage)}｜在册 ${data.live_symbols ?? '—'} 只｜当日有 bar ${data.on_latest_bar ?? '—'} 只</div>
     ${data.stale_examples && data.stale_examples.length
@@ -224,7 +233,11 @@ function renderAdvice(card) {
   if (unc.ci_low !== null && unc.ci_low !== undefined) {
     caveats.push(`自助法 95% 区间 [${fmt(unc.ci_low, 3)}, ${fmt(unc.ci_high, 3)}]`);
   }
-  box.innerHTML = `
+  const world = (lastState && lastState.world) || {};
+  const behind = Number(world.behind_sessions || 0);
+  box.innerHTML = `${behind > 0 ? `<div class="blocked"><b>⛔ 这张卡已过期</b>
+      <div>基准日 <b>${card.as_of || '—'}</b>，最近已收盘交易日 <b>${world.last_completed_session || '—'}</b>
+      （差 ${behind} 个交易日）：下面的篮子是那天的判断，不是今天的。补数据后重跑 <code>aq advice</code>。</div></div>` : ''}
     <div class="headline">部署口径：<b>${unc.total_return === null ? '—' : (unc.total_return * 100).toFixed(2) + '%'} / Sharpe ${fmt(unc.sharpe, 3)} / 回撤 ${pct(unc.max_drawdown)}</b></div>
     <ul class="caveat">${caveats.map((line) => `<li>${line}</li>`).join('')}</ul>
     <h3>目标篮（${(card.items || []).length} 只）</h3>
@@ -268,7 +281,14 @@ async function refresh() {
     return;
   }
   lastState = state;
-  $('session').textContent = `${state.today} ｜ ${state.mode}`;
+  const world = state.world || {};
+  $('session').textContent = `${state.today} ｜ ${world.session_label || ''} ｜ ${state.mode}`;
+  /* 过期的卡不许点"生成计划"：按钮在这儿禁用，服务端 /api/plan 还会再拦一次。 */
+  const behind = Number(world.behind_sessions || 0);
+  $('btn-plan').disabled = behind > 0;
+  $('btn-plan').title = behind > 0
+    ? `建议卡落后 ${behind} 个交易日（缓存 ${world.cache_as_of}，最近已收盘 ${world.last_completed_session}）：先补数据`
+    : '生成今日交易计划';
   guard('新鲜度', () => renderFreshness(state.quotes));
   guard('闸门', () => renderGate(state.gate));
   guard('目标篮', () => renderBasket(state.advice, state.quotes));

@@ -326,6 +326,101 @@ def previous_trading_day(day: date, *, calendar: TradingCalendar | None = None) 
     return (calendar or default_calendar()).previous_trading_day(day)
 
 
+WITNESS_MAX_AGE_DAYS = 30
+
+
+def _witness_date(witness) -> date | None:
+    """Coerce an exchange print timestamp into a date, or ``None`` if unusable."""
+    if witness is None:
+        return None
+    try:
+        stamp = pd.Timestamp(witness)
+    except (TypeError, ValueError):  # pragma: no cover - defensive
+        return None
+    if stamp is pd.NaT or pd.isna(stamp):
+        return None
+    return stamp.date()
+
+
+def last_completed_session(
+    ts: pd.Timestamp | datetime | str | None = None,
+    *,
+    calendar: TradingCalendar | None = None,
+    witness: pd.Timestamp | datetime | date | str | None = None,
+) -> date:
+    """Session whose closing bar must already be in the cache at ``ts``.
+
+    ``previous_trading_day`` answers a *date* question ("what came before the
+    9th?").  Every freshness gate in this repo actually asks a different one:
+    "which session's close should be in the cache by now?".  On Monday 23:00 the
+    answer is Monday, yet ``previous_trading_day(Monday)`` cheerfully returns
+    Friday -- so a cache ending Friday validates itself as current and the desk
+    offers Friday's book for Tuesday's open.  That is the failure this function
+    exists to make impossible.
+
+    ``witness`` is the exchange print date of the newest quote in hand.  It is
+    the only evidence that does not come from the cache, so it settles the two
+    cases the cache cannot: a public holiday beyond the calendar's coverage (the
+    feed keeps printing the previous session) and a session that ran on a date
+    the cache does not cover yet.  Callers must pass a date from a *live* round;
+    a month-old print means the feed is dead rather than the market closed, so
+    it is ignored and the calendar decides.
+
+    Deliberately not a "is the data fresh" verdict: it returns a date, and the
+    comparison with the cache's ``as_of`` stays the gate's job.
+    """
+    moment = _as_ts(ts)
+    today = moment.date()
+    cal = calendar or default_calendar()
+    stamp = _witness_date(witness)
+    if stamp is not None and (stamp > today or (today - stamp).days > WITNESS_MAX_AGE_DAYS):
+        stamp = None
+
+    if cal.covers(today):
+        # Inside coverage the cache is authoritative: a holiday is simply absent.
+        ran_today = cal.is_trading_day(today)
+    elif stamp is not None:
+        ran_today = stamp >= today
+    else:
+        ran_today = today.weekday() < 5
+
+    if ran_today and moment.time() >= SESSION_AFTERNOON[1]:
+        return today
+    if stamp is not None and stamp < today:
+        return stamp
+    return cal.previous_trading_day(today)
+
+
+def session_gap(
+    data_as_of: date | str | pd.Timestamp | None,
+    expected: date | str | pd.Timestamp | None,
+    *,
+    calendar: TradingCalendar | None = None,
+) -> int:
+    """How many sessions ``data_as_of`` is behind ``expected`` (0 = current).
+
+    Counting sessions rather than calendar days is the difference between "the
+    cache is 3 days old" (Friday to Monday, which sounds alarming and is fine) and
+    "the cache is one session behind" (which is the thing that must be fixed).
+    Outside the calendar's coverage the weekday rule is used and may over-count a
+    holiday by one -- the honest direction: never under-report a gap.
+    """
+    if data_as_of is None or expected is None:
+        return 0
+    start = pd.Timestamp(data_as_of).date()
+    end = pd.Timestamp(expected).date()
+    if end <= start:
+        return 0
+    cal = calendar or default_calendar()
+    gap = 0
+    cursor = start
+    while cursor < end:
+        cursor += timedelta(days=1)
+        if cal.is_trading_day(cursor):
+            gap += 1
+    return gap
+
+
 def session_state(
     ts: pd.Timestamp | datetime | str | None = None, *, calendar: TradingCalendar | None = None
 ) -> str:
@@ -1382,6 +1477,15 @@ class Board:
         fresh = sum(1 for q in self.quotes.values() if not q.stale)
         return round(fresh / len(self.quotes), 4)
 
+    @property
+    def print_date(self) -> date | None:
+        """Newest exchange print date in this round -- evidence a session ran."""
+        stamps = [q.quote_time for q in self.quotes.values() if q.quote_time is not None]
+        if not stamps:
+            return None
+        newest = max(stamps)
+        return None if pd.isna(newest) else pd.Timestamp(newest).date()
+
     def to_dict(self) -> dict:
         return {
             "fetched_at": self.fetched_at.isoformat() if self.fetched_at is not None else None,
@@ -1395,6 +1499,7 @@ class Board:
             "stale_symbols": self.stale_symbols,
             "tradable": self.tradable,
             "fresh_ratio": self.fresh_ratio,
+            "print_date": str(self.print_date) if self.print_date is not None else None,
             "quotes": {symbol: quote.to_dict() for symbol, quote in sorted(self.quotes.items())},
         }
 

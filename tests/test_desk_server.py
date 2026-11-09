@@ -217,19 +217,40 @@ def test_the_server_binds_loopback_only() -> None:
 # --------------------------------------------------------------------------- #
 # the "生成计划" button, end to end
 # --------------------------------------------------------------------------- #
-def _seed_plan_fixture(state, tmp_path) -> None:
-    """A ledger, a gate at L2 and a non-blocked card: enough for /api/plan to trade."""
+def _calendar_through(last: str):
+    """A bar calendar ending on ``last`` -- what the real cache looks like."""
+    import pandas as pd
+
+    from quant_system.realtime import TradingCalendar
+
+    days = [
+        day.date()
+        for day in pd.bdate_range("2026-09-21", last)
+        if not (pd.Timestamp("2026-10-01") <= day <= pd.Timestamp("2026-10-08"))
+    ]
+    return TradingCalendar(days)
+
+
+def _seed_plan_fixture(state, tmp_path, *, clock: str = "2026-11-06 16:30") -> None:
+    """A ledger, a gate at L2 and a non-blocked card: enough for /api/plan to trade.
+
+    The clock is pinned right after the card's session closed: without that the
+    desk (correctly) refuses to plan from a card older than the last close, and the
+    test would be asserting yesterday's behaviour instead of today's.
+    """
     import pandas as pd
 
     from quant_system.paper import Ledger
     from quant_system.trading import TradingGate, TradingLevel
 
+    state.clock = lambda: pd.Timestamp(clock)
+    state.calendar = _calendar_through("2026-11-06")
     state.ledger_path.parent.mkdir(parents=True, exist_ok=True)
     Ledger(cash=200_000.0, positions={}, as_of="2026-11-06").save(state.ledger_path)
     TradingGate(state.paths["gate"]).set_level(TradingLevel.L2_SEMI_AUTO)
     card = {
         "as_of": "2026-11-06",
-        "generated_at": "2026-11-09 15:30:00",
+        "generated_at": "2026-11-06 16:30:00",
         "strategy": "low_vol_core",
         "equity": 200_000.0,
         "blocked": False,
@@ -293,6 +314,42 @@ def test_the_plan_button_reports_a_blocked_card_instead_of_trading(server, state
     assert payload["blocked"] is True
     assert payload["plan"] is None
     assert "不排单" in payload["note"]
+
+
+def test_plan_refuses_a_card_whose_session_has_since_closed(server, state, tmp_path) -> None:
+    """The card's own ``blocked`` flag is a frozen snapshot: Monday night it lies.
+
+    Generating on Friday is fine; acting on it Tuesday is not. The server must
+    re-derive the verdict from the clock, not trust the file.
+    """
+    _seed_plan_fixture(state, tmp_path, clock="2026-11-09 23:00")
+    status, payload = _post(server + "/api/plan", {})
+    assert status == 200
+    assert payload["blocked"] is True
+    assert payload["plan"] is None
+    assert "2026-11-06" in payload["reasons"][0] and "2026-11-09" in payload["reasons"][0]
+    assert not (tmp_path / "trading" / "orders_today" / "orders.csv").exists()
+
+
+def test_state_reports_the_world_clock_and_the_cache(server, state, tmp_path) -> None:
+    """Two dates, side by side: the desk's clock (market) and ``as_of`` (our data)."""
+    _seed_plan_fixture(state, tmp_path, clock="2026-11-09 23:00")
+    status, body = _get(server + "/api/state")
+    assert status == 200
+    world = json.loads(body)["world"]
+    assert world["last_completed_session"] == "2026-11-09"
+    assert world["cache_as_of"] == "2026-11-06"
+    assert world["behind_sessions"] == 1
+    assert world["stale"] is True
+    assert world["session"] == "after_close"
+
+
+def test_state_is_not_stale_on_the_session_the_card_belongs_to(server, state, tmp_path) -> None:
+    _seed_plan_fixture(state, tmp_path)  # clock = Friday 16:30, card as_of = Friday
+    _, body = _get(server + "/api/state")
+    world = json.loads(body)["world"]
+    assert world["behind_sessions"] == 0
+    assert world["stale"] is False
 
 
 def test_bars_limit_is_clamped(server) -> None:

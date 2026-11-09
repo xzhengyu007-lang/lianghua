@@ -279,7 +279,7 @@ def test_card_forbids_a_bare_return_number(tmp_path) -> None:
 def test_gate_blocks_a_stale_session_even_when_everything_else_is_perfect(tmp_path) -> None:
     card = _built_card(tmp_path, last_trading_day="2026-02-23")  # panel ends 2026-02-20
     assert card.blocked is True
-    assert any("上一交易日" in reason for reason in card.block_reasons)
+    assert any("最近已收盘交易日" in reason for reason in card.block_reasons)
     assert card.items == [], "a blocked card must not carry orders"
 
 
