@@ -125,6 +125,44 @@ def check_anchor(previous: dict | None) -> tuple[bool, str]:
     return same, ("锚点未变｜" + detail) if same else ("锚点已变｜" + detail)
 
 
+ANCHOR_HISTORY = ROOT / "reports" / "acceptance" / "anchor_history.jsonl"
+
+
+def _git_state() -> dict:
+    """Where the code was when a human said the number may move."""
+    state = {"head": None, "dirty": None}
+    for key, argv in (("head", ["git", "rev-parse", "--short", "HEAD"]),
+                      ("dirty", ["git", "status", "--porcelain"])):
+        try:
+            out = subprocess.run(argv, cwd=str(ROOT), capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace", timeout=10)
+            state[key] = out.stdout.strip() if key == "dirty" else (out.stdout.strip() or None)
+        except (OSError, subprocess.SubprocessError):  # no git, no history detail
+            state[key] = None
+    if state["dirty"] is not None:
+        state["dirty"] = bool(state["dirty"])
+    return state
+
+
+def record_anchor_change(previous: dict, current: dict, reason: str) -> dict:
+    """Append one line to the anchor history.  Append-only: never rewritten."""
+    import os
+
+    entry = {
+        "accepted_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "reason": reason,
+        "previous": previous,
+        "current": current,
+    }
+    entry.update(_git_state())
+    ANCHOR_HISTORY.parent.mkdir(parents=True, exist_ok=True)
+    with ANCHOR_HISTORY.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    return entry
+
+
 def check_desk() -> tuple[bool, str]:
     """Start the desk in-process, read /api/state, demand strict JSON."""
     import threading
@@ -173,7 +211,7 @@ CHECKS = [
 # --------------------------------------------------------------------------- #
 # driver
 # --------------------------------------------------------------------------- #
-def run(*, with_sla: bool = False, record: bool = True) -> dict:
+def run(*, with_sla: bool = False, record: bool = True, accept_anchor: str | None = None) -> dict:
     previous = None
     if RECORD.exists():
         try:
@@ -196,6 +234,22 @@ def run(*, with_sla: bool = False, record: bool = True) -> dict:
     if previous is not None or current_anchor() is not None:
         started = time.perf_counter()
         ok, detail = check_anchor(previous)
+        reason = (accept_anchor or "").strip()
+        if not ok and reason:
+            # An override is allowed, but only when everything else is green: the
+            # anchor is the *last* thing to trust, never the thing that excuses a
+            # broken check.  And it leaves a line in the history, always.
+            failures = [row["name"] for row in results if not row["ok"]]
+            current = current_anchor()
+            if failures:
+                detail += "｜未确认锚点：%s 还没通过" % "、".join(failures)
+            elif previous is None or current is None:
+                detail += "｜未确认锚点：没有可比的旧锚点"
+            else:
+                record_anchor_change(previous, current, reason)
+                ok = True
+                detail = "锚点已按人工确认更新（理由：%s）｜total_return %.10f / sharpe %.10f" % (
+                    reason, current["total_return"], current["sharpe"])
         results.append({"name": "backtest_anchor", "ok": bool(ok), "detail": detail,
                         "seconds": round(time.perf_counter() - started, 1)})
         print("%-24s %s  %5.1fs  %s" % ("backtest_anchor", "✅" if ok else "❌",
@@ -225,10 +279,16 @@ def run(*, with_sla: bool = False, record: bool = True) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="一条命令验收：测试 / 自检 / 指纹 / 引用审计 / 交易台")
     parser.add_argument("--with-sla", action="store_true", help="额外跑行情 SLA 实测（需要网络）")
+    parser.add_argument(
+        "--accept-anchor",
+        metavar="REASON",
+        help="锚点确实该动时（例如补了新的交易日 bar）写一句理由来确认它；"
+             "只在其它检查全绿时生效，并追加一行到 reports/acceptance/anchor_history.jsonl",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
-    payload = run(with_sla=args.with_sla)
+    payload = run(with_sla=args.with_sla, accept_anchor=args.accept_anchor)
     print()
     failed = [row["name"] for row in payload["checks"] if not row["ok"]]
     if failed:

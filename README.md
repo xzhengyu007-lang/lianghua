@@ -159,8 +159,9 @@ python -m venv .venv
 ### 一条命令验收
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\run_acceptance.py          # 5 项，约 4 分钟
+.\.venv\Scripts\python.exe scripts\run_acceptance.py          # 6 项，约 4 分钟
 .\.venv\Scripts\python.exe scripts\run_acceptance.py --with-sla  # 再加行情 SLA 实测
+.\.venv\Scripts\python.exe scripts\run_acceptance.py --accept-anchor "补了 2026-11-09 的日线"
 ```
 
 | 检查 | 判据 |
@@ -174,6 +175,10 @@ python -m venv .venv
 
 退出码 `0` 全绿、`1` 有检查没过。通过的运行会把锚点写进 `reports/acceptance/last.json`，
 下一次自动比对——所以"回测数字一字未变"不再靠人记。
+
+锚点真的该动时（最常见的是**补进了新的交易日 bar**），不要删记录：用 `--accept-anchor "理由"`
+明确确认。它只在其余检查全绿时生效（锚点不能用来抵消一个坏掉的检查），并追加一行到
+`reports/acceptance/anchor_history.jsonl`（新旧数值、理由、时间、git HEAD、是否 dirty）。
 
 ### 本地交易台（`scripts/desk_server.py`）
 

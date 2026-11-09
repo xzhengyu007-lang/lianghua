@@ -31,12 +31,28 @@ python -m venv .venv
 .\.venv\Scripts\python.exe scripts\run_acceptance.py
 ```
 
-五项：`pytest` 全绿、`run_publish_check` 三项 ok、上游产物指纹未漂、引用审计 0 问题、
-交易台 `/api/state` 是严格 JSON。**第六项是回测锚点**：与 `reports/acceptance/last.json`
-里上次通过的锚点逐位比对——首次运行只记录。失败的那次不会覆盖记录。
+六项：`pytest` 全绿、`run_publish_check` 三项 ok、上游产物指纹未漂、引用审计 0 问题、
+交易台 `/api/state` 是严格 JSON、**回测锚点逐位未变**。加 `--with-sla` 是第七项（行情 SLA 实测）。
+锚点与 `reports\acceptance\last.json` 里上次通过的值逐位比对——首次运行只记录，
+失败的那次不会覆盖记录。
 
-锚点变了只有两种解释：要么你确实改了口径（那就同步改 `DECISION.md`/README 并说明），
-要么你无意中动了回测路径（那就回滚）。这个脚本不判断哪种，它只拒绝装作没发生。
+锚点变了有三种解释：
+
+| 解释 | 动作 |
+|---|---|
+| 你确实改了口径 | 同步改 `DECISION.md`/README 说明，再确认 |
+| 你无意中动了回测路径 | 回滚 |
+| **数据长了**（补进了新的交易日 bar） | 确认，并写明理由 |
+
+第三种是日常业务，但确认必须留下痕迹，而不是删掉 `last.json` 当没发生：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_acceptance.py --accept-anchor "补了 2026-11-09 的日线"
+```
+
+它只在**其余检查全绿**时才生效（锚点是最后才信的东西，不能用来抵消一个坏掉的检查），
+并追加一行到 `reports\acceptance\anchor_history.jsonl`：新旧两个数值、理由、时间、
+当时的 git HEAD、工作区是否 dirty。锚点没动时这个参数什么也不做。
 
 ## 1.5 每个交易日的两条命令（交易层）
 

@@ -17,7 +17,7 @@
 | `download_pit_raw.py` | download | 22 | Download the raw (unadjusted) bars needed to rebuild PIT series (RESEARCH_LOG 23.19). |
 | `download_pit_raw_rest.py` | download | 21 | Resume the raw-bar download from data/tmp_raw_todo.json after a partial run (RESEARCH_LOG 23.19). |
 | `measure_realtime_sla.py` | other | 222 | Measure the realtime/advice SLAs the docs quote, so they cannot drift silently. |
-| `run_acceptance.py` | run | 244 | One command that answers "is this checkout still acceptable?". |
+| `run_acceptance.py` | run | 304 | One command that answers "is this checkout still acceptable?". |
 | `run_adjustment_audit.py` | run | 71 | Compare qfq / raw / rebuilt series on one window: the additive-adjustment problem (23.19). |
 | `run_adv_lookahead.py` | run | 63 | Does the ADV participation cap read volume the order is about to consume? (23.17) |
 | `run_baseline.py` | run | 153 | Full-period baseline: report, dashboard, and factor diagnostics. |
